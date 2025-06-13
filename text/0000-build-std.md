@@ -10,6 +10,27 @@
 
 **TODO:** after context sections accepted
 
+## Scope
+[scope]: #scope
+
+build-std, as proposed by this RFC, has many restrictions and limitations that
+mean it will not support most use cases that those waiting for build-std hope
+that it will. This is an explicit and deliberate choice. This RFC will focus on
+resolving the key questions that will enable a MVP of build-std to be accepted
+and stabilised. This will lay the foundation for future proposals to lift
+restrictions and enable build-std to support more use cases, without those
+proposals having to survey the ten+ years of issues, pull requests and
+discussion that this RFC has.
+
+## Acknowledgements
+[acknowledgements]: #acknowledgements
+
+This RFC would not have been possible without the advice, feedback and support
+of [Josh Triplett][joshtriplett], [Eric Huss][ehuss] and
+[Wesley Wiser][wesleywiser].
+
+adam, ed (for opaque)
+
 # Terminology
 [terminology]: #terminology
 
@@ -41,49 +62,38 @@ rationale:
   implementation has been tied to the compiler implementation and has had to change
   in lockstep
 
-Not all targets support the standard library or have a pre-built standard library
-distributed via rustup.
+Not all targets support the standard library or have a pre-built standard
+library distributed via rustup. This depends on the tier of support for the
+target. According to rustc's [platform support][platform-support] documentation,
+for tier three targets:
 
-While Rust's [target tier policy][target-tier-policy] doesn't explicitly say that
-tier one and tier two targets will have a distributed standard library[^1], it is defacto
-the case that the standard library is pre-built and distributed as a rustup component for
-both tiers of targets.
+> Tier 3 targets are those which the Rust codebase has support for, but which
+> the Rust project does not build or test automatically, so they may or may not
+> work. Official builds are not available.
 
-[^1]: The target tier policy requires that targets support as much of the standard
-      library as is feasible at tier one or tier two, but does not specify that
-      those targets will have a pre-built standard library distributed as a rustup
-      component.
+..and tier two targets:
 
-      For tier two targets, the target tier policy says:
+> The Rust project builds official binary releases of the standard library (or,
+> in some cases, only the core library) for each tier 2 target, and automated
+> builds ensure that each tier 2 target can be used as build target after each
+> change.
 
-      > - Tier 2 targets must not leave any significant portions of core or the
-      >   standard library unimplemented or stubbed out, unless they
-      >   cannot possibly be supported on the target.
-      >   - The right approach to handling a missing feature from a target
-      >     may depend on whether the target seems likely to develop the feature
-      >     in the future. In some cases, a target may be co-developed along with
-      >     Rust support, and Rust may gain new features on the target as that
-      >     target gains the capabilities to support those features.
-      >   - As an exception, a target identical to an existing tier 1 target except
-      >     for lower baseline expectations for the OS, CPU, or similar, may propose
-      >     to qualify as tier 2 (but not higher) without support for std if the
-      >     target will primarily be used in no_std applications, to reduce the support
-      >     burden for the standard library. In this case, evaluation of the proposed
-      >     target's value will take this limitation into account.
+..and finally, tier one targets:
 
-      For tier one targets, the target tier policy says:
+> The Rust project builds official binary releases for each tier 1 target, and
+> automated testing ensures that each tier 1 target builds and passes tests
+> after each change.
 
-      > The target must provide as much of the Rust standard library as is feasible
-      > and appropriate to provide. For instance, if the target can support
-      > dynamic memory allocation, it must provide an implementation of alloc
-      > and the associated data structures.
+All of the standard library crates leverage permanently unstable features
+provided by the compiler that will never be stabilised and therefore require
+nightly to build.
 
 The configuration for the pre-built standard library is spread across bootstrap,
 the standard library workspace, individual standard library crate manifests
 and the target specification. The pre-built standard library, in the form of
-an `rlib`[^2], is installed into the sysroot.
+an `rlib`[^1], is installed into the sysroot.
 
-[^2]: An `rlib` is an `ar` archive containing object files and a `rmeta` file. An
+[^1]: An `rlib` is an `ar` archive containing object files and a `rmeta` file. An
       `rmeta` is a binary file containing metadata from the compiler with all the
       information it needs about the types and items of the dependency to compile
       the next crate.
@@ -157,29 +167,80 @@ often different depending on the target.
 ## Target support of the standard library
 [target-support-of-the-standard-library]: #target-support-of-the-standard-library
 
-The `std` crate's `build.rs` checks for supported values of the
+The `std` crate's [`build.rs`][std-build.rs] checks for supported values of the
 `CARGO_CFG_TARGET_OS` environment variable. `CARGO_CFG_TARGET_OS` corresponds to
 the "os" part of a target triple, e.g. "linux" in "aarch64-unknown-linux-gnu".
 
 When encountering an unknown or unsupported operating system then the
 `restricted_std` cfg is set. `restricted_std` marks the entire standard library
-as unstable, requiring `feature(restricted_std)` to be enabled on any crate
-that depends on it. There is no mechanism for users to enable the `restricted_std`
-feature on behalf of dependencies.
+as unstable, requiring `feature(restricted_std)` to be enabled on any crate that
+depends on it. There is no mechanism for users to enable the `restricted_std`
+feature on behalf of dependencies. There is also no such mechanism for `alloc`
+or `core`, only `std`.
+
+Cargo and rustc support custom targets, defined in JSON files according to an
+unstable schema defined in the compiler. On nightly, users can dump the
+target-spec-json for an existing target using `--print target-spec-json`, which
+can be saved in a file, tweaked and used as the argument to `--target`. Custom
+targets do not have a pre-built standard library and so must use `-Zbuild-std`.
+Custom targets can have `restricted_std` set depending on their value of the
+"os" part of the triple, just as built-in targets.
 
 ## Panic strategies
 [panic-strategies]: #panic-strategies
 
-There are two panic crates in the standard library - `panic_unwind` and
-`panic_abort` - that provide implementations of panic behaviour. rustc has
-a `-Cpanic` flag that allows the user to chose the panic strategy, though the
-"unwind" option may not be chosen if the target does not support it.
+Rust has the concept of a *panic handler*, which is a crate that is responsible
+for performing a panic. There are various panic handler crates on crates.io,
+such as [panic-abort] (which different from the `panic_abort` panic runtime!),
+[panic-halt], [panic-itm], and [panic-semihosting]. Panic handler crates define
+a function annotated with `#[panic_handler]`. There can only be one
+`#[panic_handler]` in the crate graph.
 
-Both crates are compiled and shipped with the pre-built standard library for 
-targets which support `std`. All targets which support the `std` crate default
-to the unwinding panic strategy. Some targets with a pre-built standard library
-default to abort, such as the no-std target `x86_64-unknown-none` (which ships
-only pre-built `core` and `alloc` crates since version "1.62").
+`core` uses the panic handler to implement panics inserted by code generation
+(e.g. arithmetic overflow or out-of-bounds access) and the `core::panic!` macro
+immediately delegates to the panic handler crate.
+
+`std` is also a panic handler. `std`'s panic handler and `std::panic!` macro
+print panic information to stderr and delegates to a *panic runtime* to decide
+what to do next (e.g. abort or unwind). The decision to abort or unwind is the
+*panic strategy*.
+
+There are two panic runtime crates in the standard library - `panic_unwind` and
+`panic_abort` - corresponding to each panic strategy. Each target supported by
+rustc specifies a default panic strategy - either "unwind" or "abort" - though
+these are only relevant if `std`'s panic handler is used (i.e. the target isn't
+a `no_std` target or being used with a `no_std` crate).
+
+Rust's `-Cpanic` flag allows the user to choose the panic strategy, with the
+target's default as a fallback. If `-Cpanic=unwind` is provided then this
+doesn't guarantee that the unwind strategy is used, as the target may not
+support it.
+
+Both crates are compiled and shipped with the pre-built standard library for
+targets which support `std`. All targets which support `std` default to the
+unwinding panic strategy. Some targets have a pre-built standard library with
+only `core` and `alloc` crates, such as the `x86_64-unknown-none` target. While
+`x86_64-unknown-none` defaults to the `abort` panic strategy, as this target
+does not support the standard library, this default isn't actually relevant.
+
+The `std` crate has a `panic_unwind` feature that enables an optional dependency
+on the `panic_unwind` crate.
+
+`core` also has a `panic_immediate_abort` feature which modifies the
+`core::panic!` macro to immediately call the abort intrinsic without calling the
+panic handler. `std` and `alloc` have the same feature which enable the feature
+in `core`. `std`'s feature also adds an immediate abort to its `panic!` macro.
+
+## Target modifiers
+[target-modifiers]: #target-modifiers
+
+[rfcs#3716] introduced the concept of *target modifiers* to rustc. Flags marked
+as target modifiers must match across the entire crate graph or the compilation
+will fail.
+
+For example, flags are made target modifiers when they change the ABI of
+generated code and could result in unsound ABI mismatches if two crates are
+linked together with different values of the flag set.
 
 # Motivation
 [motivation]: #motivation
@@ -188,20 +249,10 @@ While the pre-built standard library has been sufficient for the majority of
 Rust users, there are a variety of use-cases which require the ability to
 re-build the standard library.
 
-Not all of these use cases will be supported initially or at all by build-std as
-proposed by this RFC.
+This RFC aims to support the following use cases:
 
-**TODO:** once the non-context parts of this RFC have been written, make it clear which motivations are relevant
-
-1. **Using the standard library with tier three targets and custom targets**
-  - There is no stable mechanism for using the standard library for a tier three
-    target that does not ship a pre-built std. Similarly, custom targets (using
-    target-spec-json) cannot use the standard library
-  - While it is common for these targets to not support the standard library,
-    they should be able to use `core`
-  - These users are forced to use nightly and the unstable `-Zbuild-std`
-    feature or third-party tools like [cargo-xbuild] (formerly [xargo])
-2. **Re-building the standard library with different codegen flags or profile** ([wg-cargo-std-aware#2])
+1. **Re-building the standard library with different codegen flags or profile**
+   ([wg-cargo-std-aware#2])
  - Embedded users need to optimise aggressively for size, due to the limited
    space available on their target platforms, which can be achieved in Cargo by
    setting `opt-level = s/z` and `panic = "abort"` in their profile. However,
@@ -214,10 +265,7 @@ proposed by this RFC.
    compromising size and performance by setting `debuginfo=1`, this isn't
    ideal, and building the standard library with the dev profile would provide
    a better experience
- - Using miri requires building the standard library with specific compiler flags
-   that would not be appropriate for the pre-built standard library, so is forced
-   to require nightly and build its own sysroot
-3. **Unblock stabilisation of ABI-modifying compiler flags**
+1. **Unblock stabilisation of ABI-modifying compiler flags**
   - Any compiler flags which change the ABI cannot currently be stabilised as they
     would immediately mismatch with the pre-built standard library
     - Without an ability to rebuild the standard library using these flags, it is
@@ -227,29 +275,49 @@ proposed by this RFC.
     - Flags which need to be set across the entire crate graph to uphold some
       property (i.e. enhanced security) are also target modifiers
     - For example: sanitizers, control flow integriy, `-Zfixed-x18`, etc
-4. **Enabling Cargo features for the standard library** ([wg-cargo-std-aware#4])
-  - There are opportunities to expose Cargo features from the standard library that
-    would be useful for certain subsets of the Rust users.
-    - For example, embedded users may want to enable a feature like `optimize_for_size` or
-      `panic_immediate_abort` to reduce binary size
-5. **Building standard library crates than are not shipped for a target**
+1. **Building the standard library on a stable toolchain without Cargo**
+  - While tangential to the core of build-std as a feature, projects like Rust
+    for Linux want to be able to build an unmodified `core` from `rust-src` in
+    the sysroot on a stable toolchain without Cargo
+  - Cargo may also want a mechanism to build the standard library for build-std
+    on a stable toolchain without relying on `RUST_BOOTSTRAP`
+1. **Building standard library crates than are not shipped for a target**
   - Profile-guided optimisation requires the `profiler_builtins` crate which is not
     currently distributed as part of the `rust-std` rustup component
   - Targets which have limited `std` support may wish to use the subsets of the
     standard library which do work
-6. **Modifying the source code of the standard library** ([wg-cargo-std-aware#7])
+1. **Using the standard library with tier three targets**
+  - There is no stable mechanism for using the standard library on a tier three
+    target that does not ship a pre-built std
+  - While it is common for these targets to not support the standard library,
+    they should be able to use `core`
+  - These users are forced to use nightly and the unstable `-Zbuild-std`
+    feature or third-party tools like [cargo-xbuild] (formerly [xargo])
+1. **Using miri on a stable toolchain**
+  - Using miri requires building the standard library with specific compiler flags
+    that would not be appropriate for the pre-built standard library, so is forced
+    to require nightly and build its own sysroot
+
+The following use cases are not supported by this RFC, but could be supported with
+follow-up RFCs:
+
+1. **Using the standard library with custom targets**
+  - There is no stable mechanism for using the standard library for a custom
+    target (using target-spec-json)
+  - Like tier three targets, these targets often only support `core` and are
+    forced to use nightly today
+1. **Enabling Cargo features for the standard library** ([wg-cargo-std-aware#4])
+  - There are opportunities to expose Cargo features from the standard library that
+    would be useful for certain subsets of the Rust users.
+    - For example, embedded users may want to enable a feature like `optimize_for_size` or
+      `panic_immediate_abort` to reduce binary size
+1. **Modifying the source code of the standard library** ([wg-cargo-std-aware#7])
   - Some platforms require a heavily modified standard library that would not
     be suitable for upstreaming, such as [Apache's SGX SDK][sgx] which replaces
     some standard library and ecosystem crates with forks or custom crates for a
     custom `x86_64-unknown-linux-sgx` target
   - Similarly, some tier three targets may wish to patch standard library
     dependencies to add or improve support for the target
-7. **Building the standard library on a stable toolchain without Cargo**
-  - While tangential to the core of build-std as a feature, projects like Rust
-    for Linux want to be able to build an unmodified `core` from `rust-src` in
-    the sysroot on a stable toolchain without Cargo
-  - Cargo may also want a mechanism to build the standard library for build-std
-    on a stable toolchain without relying on `RUST_BOOTSTRAP`
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -293,6 +361,591 @@ proposed by this RFC.
 
 **TODO:** after context sections accepted
 
+## Support of the standard library for a target
+[support-of-the-standard-library-for-a-target]: #support-of-the-standard-library-for-a-target
+
+A new `standard_library_support` field is added to the target specification,
+replacing the existing `metadata.std`, which has three fields: `core`, `alloc`
+and `std`. These fields determine whether the corresponding crate is supported
+for that target. On a stable toolchain, build-std will emit an error if it
+required to build a crate which is not supported by a given target.
+
+Each target will set `core`, `alloc` and `std` as appropriate. For example, all
+three standard library crates will be stable on "aarch64-unknown-linux-gnu",
+only `alloc` and `core` will be stable on "x86_64-unknown-none" and only `core`
+will be stable on "mipsel-sony-psx".
+
+The `target-standard-library-support` option will be supported by `rustc`'s
+`--print` flag:
+
+```shell-session
+$ rustc --print target-standard-library-support
+target: aarch64-unknown-linux-gnu
+std: true
+alloc: true
+core: true
+$ rustc --print target-standard-library-support --target x86_64-unknown-none
+target: x86_64-unknown-none
+std: false
+alloc: true
+core: true
+$ rustc --print target-standard-library-support --target mipsel-sony-psx
+target: mipsel-sony-psx
+std: false
+alloc: false
+core: true
+```
+
+On a stable toolchain, if Cargo needs to build one of the standard library
+crates for a target, it will check `--print target-standard-library-support` to
+determine whether to emit an error.
+
+The existing `restricted_std` mechanism will be removed from the standard
+library's [`build.rs`][std-build.rs] as it is replaced by this mechanism.
+
+### Custom targets and target-spec-json
+[custom-targets-and-target-spec-json]: #custom-targets-and-target-spec-json
+
+While custom targets can be used on stable today, in practice, they are only
+used on nightly as `-Zbuild-std` would need to be used to build at least `core`.
+As such, if build-std were to be stabilised, custom targets would become much
+more usable on stable toolchains. 
+
+In order to avoid users relying on the unstable target-spec-json format on a
+stable toolchain, Cargo will detect when a custom target is being used and
+to build any of the standard library crates and will emit an error.
+
+Cargo could detect use of a custom target either by comparing it with the
+list of built-in targets that rustc reports knowing about, or by checking if a
+file exists at the path matching the provided target name.
+
+Custom targets can still be used with build-std on nightly toolchains.
+
+*Enabling build-std with custom targets on stable toolchains is explored in
+[Future possibilities][future-possibilities]*
+
+## Standard library dependencies
+[standard-library-dependencies]: #standard-library-dependencies
+
+Every crate now has a implicit dependency on the `std` crate. This implicit
+dependency can be removed if a user explicitly writes a dependency on any of the
+standard library crates - `core`, `alloc` or `std`.
+
+In the `hello_world` crate below, there is an implicit dependency on `std`..
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+```
+
+..which is equivalent to the following explicit dependency on `std`:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true } # could be `alloc` or `core` instead
+```
+
+`builtin` is a new source of dependency, like crates.io dependencies (with the
+`version` key), `path` dependencies or `git` dependencies. `builtin` can only be
+set to `true` and cannot be combined with any other dependency source. `builtin`
+can only be used with crates named `core`, `alloc` or `std`. crates.io will
+accept crates published which have `builtin` dependencies.
+
+Cargo already supports `path` and `git` dependencies for crates named `core`,
+`alloc` and `std` which continue to be supported and work as before.
+
+If multiple standard library crates are added as explicit dependencies, this
+behaves the same way as if crates A and B from crates.io are added to a manifest
+and A depends on B.
+
+Standard library dependencies can be marked as `optional` and be enabled
+conditionally by a feature in the crate:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true, optional = true }
+```
+
+On stable toolchains, it is not permitted to patch the standard library
+dependencies:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true }
+
+[patch.builtin] # not permitted
+std = { .. }
+```
+
+It also is not possible to perform source replacement on standard library
+dependencies.
+
+Implicit and explicit standard library dependencies are not added to
+`Cargo.lock`.
+
+### Features
+[features]: #features
+
+On a stable toolchain, it is not permitted to enable or disable features of
+explicit standard library dependencies, as in the below example:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true, features = [ "foo" ] } # not permitted
+# ..or..
+std = { builtin = true, default-features = false } # not permitted
+```
+
+*Enabling and disabling features on explicit standard library dependencies when
+using a stable toolchain is explored in
+[Future possibilities][future-possibilities].*
+
+### `compiler-builtins-mem`
+[compiler-builtins-mem]: #compiler-builtins-mem
+
+The `mem` feature of `compiler_builtins` (and the subsequent
+`compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
+`compiler_builtins/mem`) is required by `no_std` crates because `libc` is not
+providing these symbols without `std`.
+
+As of [compiler-builtins#411], the relevant symbols have weak linkage and do not
+need to be behind a feature flag so these features can be removed.
+
+### Replacing `#![no_std]` as a source-of-truth
+[replacing-no_std-as-a-source-of-truth]: #replacing-no_std-as-a-source-of-truth
+
+Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
+dependency on the standard library. With `Cargo.toml` being used to express a
+dependency on the standard library (or lack thereof), it is unintuitive for
+there to be two sources-of-truth for this information.
+
+`#![no_std]` serves two purposes - it stops the compiler from loading `std` from
+the sysroot and adding `extern crate std`, and it prevents the user from
+depending on anything from `std` accidentally.
+
+Two new lints will be added to the compiler - `std_use` and `alloc_use`.
+`std_use` will trigger if the crate refers to anything from the `std` crate, and
+`alloc_use` similarly for the `alloc` crate. Both lints are allow-by-default.
+
+`#![no_std]` will become an alias for `#![deny(std_use)]`. In the next edition,
+`#![no_std]` will be rewritten as `#![deny(std_use)]` and its use prohibited.
+
+rustc will always load the standard library, but if it is unused (which would be
+enforced by `#[deny(std_use)]`), then it will "forget" about the dependency.
+
+This is functionally equivalent to the previous behaviour, but conceptually
+different - the crate's source code would no longer be a source-of-truth for
+whether or not it depends on the standard library (other than by using it or
+not, as with any other dependency).
+
+### `rustc_dep_of_std`
+[rustc_dep_of_std]: #rustc_dep_of_std
+
+The `rustc_dep_of_std` feature is used to add an explicit dependency on the
+standard library crates for dependencies of the standard library. When
+`rustc_dep_of_std` is enabled, dependencies on
+`rustc-std-workspace-{core,alloc,std}` are added, which would normally resolve
+to empty crates and are replaced with a `path` dependency to the local checkout
+of [rust-lang/rust].
+
+With first-class explicit dependencies on the standard library,
+`rustc_dep_of_std` is rendered unnecessary and explicit dependencies on the
+standard library can always be present in the `Cargo.toml` of the standard
+library's dependencies.
+
+The `core`, `alloc` and `std` dependencies can be patched in the standard
+library's workspace to point to the local checkout of the crates.
+
+## Rebuilding the standard library
+[rebuilding-the-standard-library]: #rebuilding-the-standard-library
+
+Cargo will pass `--no-implicit-sysroot-deps` to rustc which will prevent rustc
+from loading top-level dependencies from the sysroot. For example, writing
+`extern crate foo` in a crate will not load `foo.rlib` from the sysroot if it is
+present, but if an `--extern noprelude:bar.rlib` is provided which depends on a
+crate `foo`, rustc will look in `-L` paths and the sysroot for it.
+
+All Cargo dependencies are provided to the compiler using the
+`--extern noprelude:` flag, including explicit and implicit standard library
+dependencies.
+
+Cargo configuration will contain a new top-level key `build-std`, permitting one
+of three values - "off", "target-modifiers" (default) or "always":
+
+```toml
+build-std = "target-modifiers" # or `off`/`always`
+```
+
+Cargo will use the `rlib` files from the `rust-std` component to provide the
+standard library depending on the value of the `build-std` key:
+
+- If `build-std = "off"`, then the pre-built standard library artifact is always
+  used. If it is not present or is incompatible with the rest of the crate graph
+  (due to target modifiers), rustc will emit an error.
+- If `build-std = "target-modifiers"`, then the pre-built standard library will
+  be used as long as it was compiled with compatible target modifiers to the
+  current profile.
+- If `build-std = "always"`, then the pre-built standard library will be used
+  only if it has an identical configuration to the current profile.
+
+**TODO:** how does it know if the profile matches and what about profile overrides
+**TODO:** which dependencies of std are built, what about proc_macro, libtest, etc.
+**TODO:** libunwind is in self-contained, does it need to be in a not rust-std component?
+
+When the pre-built standard library is not used or available, Cargo will build
+and use the standard library from source with the requested profile. See
+[*Vendored `rust-src`*][vendored-rust-src] for how Cargo will get the sources of
+the standard library.
+
+Inspired by the concept of [opaque dependencies][Opaque dependencies], the
+dependencies of the standard library crates are entirely opaque to the user, who
+cannot control compilation any of the dependencies of the three standard library
+crates individually. The lockfile included in `rust-src` will be used when
+resolving the standard library's dependencies.
+
+The standard library will always be a non-incremental build, with no `depinfo`
+produced, and only a `rlib` produced (no `dylib`). It will be built into the
+`target` directory of the crate or workspace like any other dependency and
+passed with `--extern noprelude:` to rustc.
+
+Standard library artifacts build by built-std will not be shared between crates
+or workspaces, as they only exist in the `target` directory of a specific crate
+or workspace.
+
+The host pre-built standard library will always be used for procedural macros and
+build scripts.
+
+### Vendored `rust-src`
+[vendored-rust-src]: #vendored-rust-src
+
+When it is necessary to build the standard library, Cargo will look for sources
+in a fixed location in the sysroot: `lib/rustlib/src`. rustup's `rust-src`
+component downloads standard library sources to this location. If the sources
+are not found, Cargo will emit an error and recommend the user download
+`rust-src` if using rustup.
+
+`rust-src` will contain the sources for the standard library crates as well as
+its vendored dependencies. Standard library sources will never be fetched from
+crates.io.
+
+Cargo will not perform any checks to ensure that the sources in `rust-src` have
+been modified. It will be documented that modifying these sources is not
+supported.
+
+### Building the standard library on a stable toolchain
+[building-the-standard-library-on-a-stable-toolchain]: #building-the-standard-library-on-a-stable-toolchain
+
+Cargo needs to be able to build the standard library crates, which inherently
+require a nightly toolchain. It could use `RUST_BOOTSTRAP` to do this even with
+a stable toolchain, however this requirement is shared with other projects such
+as Rust for Linux, that want to build an unmodified `core` crate with a stable
+toolchain.
+
+rustc will automatically assume `RUST_BOOTSTRAP` when the source path of the
+crate being compiled is within the same sysroot as the rustc binary being
+invoked.
+
+### Panic strategies
+[panic-strategies]: #panic-strategies
+
+Panic strategies are unlike other profile settings insofar as they influence
+which crates and flags are passed to the standard library. For example. if
+`panic = "unwind"` were set in the Cargo profile then the `panic_unwind` feature
+would need to be provided to `std` and `-Cpanic=unwind` passed to suggest that
+the compiler use that panic runtime.
+
+If the current crate has no dependency on `std` (i.e. have added an `alloc` or
+`core` dependency explicitly to opt-out of the implicit `std` dependency), then
+Cargo will not build either of the `panic_unwind` or `panic_abort` crates or
+pass `-Cpanic` to rustc. If `panic` is set in the Cargo profile, then this value
+will be ignored and Cargo will emit a warning informing the user of this.
+
+If the crate does depend on `std`, then Cargo's behaviour depends on whether or
+not `panic` is set in the profile:
+
+- If `panic` is not set in the profile then it may still be the default for the
+  target, then Cargo will need to enable the `panic_unwind` feature to the
+  standard library just in case it is used.
+- If `panic` is set to "unwind" then the `panic_unwind` feature will be enabled
+  and `-Cpanic=unwind` will be passed.
+- If `panic` is set to "abort" then `-Cpanic=abort` will be passed.
+  - `panic_abort` is a non-optional dependency of `std` so it will always be
+    built.
+
+Tests, benchmarks, build scripts and proc macros continue to ignore the "panic"
+setting and `panic = "unwind"` is always used. Once `panic-abort-tests` is
+stabilised, the standard library can be built with the profile's panic strategy
+even for tests, benchmarks, build scripts and procedural macros.
+
+### Special object files
+[special-object-files]: #special-object-files
+
+A handful of targets require linking against special object files, such as
+`windows-gnu`, `linux-musl` and `wasi` targets. For example, `linux-musl`
+targets require `crt1.o`, `crti.o`, `crtn.o`, etc.
+
+Since [rust#76185]/[compiler-team#343], the compiler has a stable
+`-Clink-self-contained` flag. Its behaviour can be forced by
+`-Clink-self-contained=true`, but is force-enabled for some targets and inferred
+for others.
+
+Rust can start to ship `rust-self-contained-$target` components for targets
+which need it. While generally these objects are specific to the architecture
+and C runtime (CRT) (and so `rust-self-contained-$arch-$crt` could be sufficient
+and result in fewer overall components), it's technically possible that Rust
+could support two targets with the same architecture and same CRT but different
+versions of the CRT, so having target-specific components is most future-proof.
+These would replace the `self-contained` directory in existing `rust-std`
+components.
+
+As long as these components have been downloaded, as well as any other support
+components, such as `rust-mingw`, rustc's `-Clink-self-contained` will be able
+to link against the object files and build-std should never fail on account of
+missing special object files.
+
+### Sanitisers
+[sanitisers]: #sanitisers
+
+rustc's sanitizer support is currently unstable as it is not possible for users
+to re-build the standard library with sanitizer support.
+
+It is out-of-scope for this RFC to propose stabilising sanitizers or to expose
+sanitizer configuration in Cargo, but it is instructive to examine how build-std
+would enable sanitiser support to ensure that the proposed design is compatible.
+
+Some sanitizers require a sanitizer runtime to be present, which are part of the
+`compiler-rt` project in LLVM. These are currently built when
+[`build.sanitizers`][bootstrap-sanitizers] is set in `bootstrap`.
+
+Existing efforts to stabilise sanitizers ([rust#123617]) propose stabilising
+sanitizers on a per-sanitizer per-target basis. This is necessarily the case as
+sanitizer runtimes are not available for all of Rust's targets. rustc's flag to
+enable sanitizers will be a target modifier, as the instrumentation must be
+present for all of the crates to avoid false positives.
+
+rustc's sanitizer support attempts to locate sanitizer runtimes in the sysroot
+(`$sysroot/lib/rustlib/$target/lib/`) to link against. Rust can start to ship
+`rust-sanitizers-$target` components with the sanitizer runtimes for targets
+that support sanitizers. As long as this component has been downloaded,
+build-std would trigger whenever sanitizers are enabled in Cargo (however that
+ends up being exposed), as sanitizers are a target modifier, and the sanitized
+build would succeed as the runtimes are present.
+
+### Profiling
+[profiling]: #profiling
+
+## Cargo subcommands
+[cargo-subcommands]: #cargo-subcommands
+
+As opaque dependencies, any Cargo command which accepts a package spec with `-p`
+will only additionally recognise `core`, `alloc` and `std` and none of their
+dependencies. Many of Cargo's subcommands will need modification to support
+build-std:
+
+[`cargo add`][cargo-add] will add `core`, `alloc` or `std` explicitly to the
+manifest if invoked with those crate names:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true } # <-- this would be added
+```
+
+[`cargo clean`][cargo-check] will additionally delete any builds of the standard
+library performed by build-std.
+
+[`cargo fetch`][cargo-fetch] will not fetch the standard library dependencies as
+they are already vendored in the `rust-src` component.
+
+[`cargo info`][cargo-info] will learn how to print information for the built-in
+`std`, `alloc` and `core` dependencies:
+
+```shell-session
+$ cargo info std
+std
+rust standard library
+license: Apache 2.0 + MIT
+rust-version: 1.86.0
+documentation: https://doc.rust-lang.org/1.86.0/std/index.html
+```
+
+```shell-session
+$ cargo info alloc
+alloc
+rust standard library
+license: Apache 2.0 + MIT
+rust-version: 1.86.0
+documentation: https://doc.rust-lang.org/1.86.0/alloc/index.html
+```
+
+```shell-session
+$ cargo info core
+core
+rust standard library
+license: Apache 2.0 + MIT
+rust-version: 1.86.0
+documentation: https://doc.rust-lang.org/1.86.0/core/index.html
+```
+
+**TODO:** [`cargo metadata`][cargo-metadata]
+
+**TODO:** [`cargo miri`][cargo-miri] can 
+
+[`cargo pkgid`][cargo-pkgid] when passed `-p core` would print `builtin#core` as
+the source, likewise with `alloc` and `std`.
+
+[`cargo report`][cargo-report] will not include reports from the standard
+library crates or their dependencies.
+
+[`cargo remove`][cargo-remove] will remove `core`, `alloc` or `std` explicitly
+from the manifest if invoked with those crate names:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true } # <-- this would be removed
+```
+
+[`cargo tree`][cargo-tree] will show `std`, `alloc` and `core` at appropriate
+places in the tree of dependencies. `alloc` will always be shown as a dependency
+of `std`, and `core` a dependency of `alloc`. As opaque dependencies, none of
+the other dependencies of `std`, `alloc` or `core` will be shown. Neither `std`,
+`alloc` or `core` will have a version number.
+
+```shell-session
+$ cargo tree
+myproject v0.1.0 (/myproject)
+└── rand v0.7.3
+    ├── getrandom v0.1.14
+    │   ├── cfg-if v0.1.10
+    │   └── libc v0.2.68
+    ├── libc v0.2.68 (*)
+    ├── rand_chacha v0.2.2
+    │   ├── ppv-lite86 v0.2.6
+    │   └── rand_core v0.5.1
+    │       └── getrandom v0.1.14 (*)
+    ├── rand_core v0.5.1 (*)
+    └── std (*)
+        └── alloc (*)
+            └── core (*)
+```
+
+[`cargo update`][cargo-update] will not update the dependencies of `std`,
+`alloc` and `core`, as these are vendored as part of the distribution of
+`rust-src` and resolved separately from the user's dependencies. Neither will
+`std`, `alloc` or `core` be updated, as these are unversioned and always match
+the current toolchain version.
+
+[`cargo vendor`][cargo-vendor] will not vendor standard library dependencies.
+Vendoring these and using them later would effectively pin the crate to the
+version of the language and toolchain used when vendoring was performed (as the
+vendored standard library source would only work with that toolchain version).
+Standard library crates are already vendored in the `rust-src` component, so do
+not require network access once downloaded.
+
+The following commands will now build the standard library if required as part
+of the compilation of the project, just like any other dependency:
+
+- [`cargo bench`][cargo-bench]
+- [`cargo build`][cargo-build]
+- [`cargo check`][cargo-check]
+- [`cargo clippy`][cargo-clippy]
+- [`cargo doc`][cargo-doc]
+- [`cargo fix`][cargo-fix]
+- [`cargo run`][cargo-run]
+- [`cargo rustc`][cargo-rustc]
+- [`cargo rustdoc`][cargo-rustdoc]
+- [`cargo test`][cargo-test]
+
+build-std has no implications for the following Cargo subcommands:
+
+- [`cargo fmt`][cargo-fmt]
+- [`cargo generate-lockfile`][cargo-generate-lockfile]
+- [`cargo help`][cargo-help]
+- [`cargo init`][cargo-init]
+- [`cargo install`][cargo-install]
+- [`cargo locate-project`][cargo-locate-project]
+- [`cargo login`][cargo-login]
+- [`cargo logout`][cargo-logout]
+- [`cargo new`][cargo-new]
+- [`cargo owner`][cargo-owner]
+- [`cargo package`][cargo-package]
+- [`cargo publish`][cargo-publish]
+- [`cargo search`][cargo-search]
+- [`cargo uninstall`][cargo-uninstall]
+- [`cargo version`][cargo-version]
+- [`cargo yank`][cargo-yank]
+
+## Artifact dependencies
+[artifact-dependencies]: #artifact-dependencies
+
+## Public and private dependencies
+[public-and-private-dependencies]: #public-and-private-dependencies
+
+Implicit dependencies on the standard library default to being public
+dependencies. When a standard library is explicitly written, then it will be
+private by default, like any other written dependency, unless explicitly marked
+as public.
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+```
+
+..is equivalent to the following explicit dependency on `std`:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true, public = true }
+```
+
+## `rustc_inherit_overflow_checks`
+[rustc_inherit_overflow_checks]: #rustc_inherit_overflow_checks
+
+## Testing
+[testing]: #testing
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -313,6 +966,89 @@ proposed by this RFC.
 
 **TODO:** after context sections accepted
 
+## Why replace `restricted_std` with explicit standard library support for a target?
+[why-replace-restricted_std-with-explicit-standard-library-support-for-a-target]: #why-replace-restricted_std-with-explicit-standard-library-support-for-a-target
+
+...
+
+## Why explicitly declare dependencies on the standard library on `Cargo.toml`?
+[why-explicitly-declare-dependencies-on-the-standard-library-on-cargo-toml]: #why-explicitly-declare-dependencies-on-the-standard-library-on-cargo-toml
+
+If there are no explicit dependencies on standard library crates, Cargo would need
+to be able to determine which standard library crates to build when this is required:
+
+- Cargo could unconditionally build `std`, `alloc` and `core`. Not only would
+  this be unnecessary and wasteful for `no_std` crates in the embedded
+  ecosystem, but sometimes a target may not support building `std` at all and
+  this would cause the build to fail.
+- rustc could support a `--print` value that would print whether the crate
+  declares itself as `#![no_std]` crate, and based on this, Cargo could build
+  `std` or only `core`. Cargo would also need to know whether to build `alloc`
+  too, which checking for `#![no_std]` does not help with. Cargo could go
+  further and ask rustc whether a crate (or its dependencies) used `alloc`, but
+  this seems needlessly complicated.
+
+Furthermore, supporting explicit dependencies on standard library crates enables
+use of other Cargo features that apply to dependencies in a natural and
+intuitive way. If there were not explicit standard library dependencies and
+enabling features on the `std` crate was desirable, then a mechanism other than
+the standard syntax for this would be necessary, such as a flag (e.g.
+`-Zbuild-std-features`) or option in Cargo's configuration. This also applies to
+optional dependencies, public/private features, etc.
+
+## Why replace `#![no_std]` with `#![deny(std_use)]`?
+
+## Why prevent rustc from loading root dependencies from the sysroot?
+[why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]: #why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot
+
+When standard library dependencies are explicitly passed to rustc, there is no
+need to load root dependencies from the sysroot, which could be a source of bugs.
+
+For example, if a crate depends only on `core` which is built with a customised
+profile, then a user could still write `extern crate alloc` and accidentally
+load `alloc` from the sysroot (compiled with the default profile settings) and
+consequently `core` from the sysroot, conflicting with the newly build `core`.
+`extern crate alloc` should only be able to load the `alloc` crate if the crate
+depends on it in its `Cargo.toml`.
+
+Dependencies of packages can still be loaded from the sysroot, even with
+`--no-implicit-sysroot-deps`, to support the circumstance where Cargo uses a
+pre-built standard library crate (e.g.
+`$sysroot/lib/rustlib/$target/lib/std.rlib`) and needs to load the dependencies
+of that crate which are also in the sysroot.
+
+`--no-implicit-sysroot-deps` is a flag rather than default behaviour to preserve
+rustc's usability when invoked outside of Cargo, e.g. by compiler developers.
+
+## Why re-build the standard library automatically?
+[why-re-build-the-standard-library-automatically]: #why-re-build-the-standard-library-automatically
+
+...
+
+## Why vendor the standard library's dependencies?
+[why-vendor-the-standard-librarys-dependencies]: #why-vendor-the-standard-librarys-dependencies
+
+...
+
+## Why not check if `rust-src` has been modified?
+[why-not-check-if-rust-src-has-been-modified]: #why-not-check-if-rust-src-has-been-modified
+
+It is likely that any protections implemented to check that the sources in
+`rust-src` have not been modified could be trivially bypassed.
+
+Any crate that depends on `rust-src` having been modified would not be usable
+when published to crates.io as the required modifications will obviously not be
+included.
+
+## Why not globally cache builds of the standard library?
+[why-not-globally-cache-builds-of-the-standard-library]: #why-not-globally-cache-builds-of-the-standard-library
+
+The standard library is no different than regular dependencies in being able to
+benefit from global caching of dependency builds. A generic proposal for global
+dependency caching could support the standard library. It is out-of-scope of
+this proposal to propose a special-cased mechanism for this that applies only to
+the standard library.
+
 # Prior art
 [prior-art]: #prior-art
 
@@ -326,12 +1062,12 @@ source material, which is exhaustively surveyed in
 build-std was first proposed in a [2015 RFC (rfcs#1133))][rfcs#1133] by
 [Ericson2314], aiming to improve support for targets that do not have a
 pre-built standard library; to enable building the standard library with
-different profiles; and to simplify `rustbuild`[^3]. It also was written with
+different profiles; and to simplify `rustbuild`[^2]. It also was written with
 the goal of supporting the user in providing a custom implementation of the
 standard library and supporting different implementations of the language that
 provide their own standard libraries.
 
-[^3]: `rustbuild` was the precursor to [rust-lang/rust]'s `bootstrap`.
+[^2]: `rustbuild` was the precursor to [rust-lang/rust]'s `bootstrap`.
 
 This RFC proposed that the standard library be made an explicit dependency in
 `Cargo.toml` and be rebuilt automatically when required. An implicit dependency
@@ -796,6 +1532,21 @@ are related or would be beneficial for build-std:
 
 **TODO:** after context sections accepted
 
+- Relax restriction preventing custom targets from being used with build-std
+  - This would require a decision from the relevant teams on the exact stability
+    guarantees of the target-spec-json format and whether any large changes to
+    the format are desirable prior to broader use.
+- Relax restriction on enabling/disabling features of standard library dependencies
+  - This would require the library team be comfortable with the features
+    declared on the standard library being part of the stable interface of the
+    standard library
+  - Alternatively, this could be enabled alongside another proposal which would
+    allow the standard library to define some features as stable and others as
+    unstable
+- Add a `--print default-unwind-strategy` to rustc and use that to avoid
+  building `panic_unwind` if the default is abort for any given target and
+  `panic` is not set in the profile
+
 # Appendix I: Exhaustive literature review
 [appendix-i]: #appendix-i-exhaustive-literature-review
 
@@ -823,7 +1574,7 @@ This section contains all of the sources related to [rfcs#1133].
       pre-built std due to strange configuration requirements
     - ..building std with different configurations (e.g. panic
       strategies/features/etc)
-    - ..simplifying `rustbuild`[^3]
+    - ..simplifying `rustbuild`[^2]
   - The RFC proposes both that the standard library should be explicitly listed
     as a dependency in `Cargo.toml` and that it should be rebuilt when necessary
     - `std = { version = "1.10", stdlib = true }` is the proposed syntax for a
@@ -1568,6 +2319,7 @@ These issues document open design questions for build-std:
       being necessary for `panic_abort` crate
     - Cargo should be able to take a more "pure" stance relative to `libtest`
       - [rust#64158] later merged supporting `panic=abort` with `libtest`
+        - It is not yet stable ([rust#67650])
     - Ideally only compile one panic strategy crate
     - Target-specfic settings are tricky
       - Almost all cases of building the standard library from source are `panic=abort`
@@ -2137,6 +2889,10 @@ general feature for Cargo that could then apply to build-std too:
 [JOSH]: https://josh-project.github.io/josh/intro.html
 [cargo-xbuild]: https://github.com/rust-osdev/cargo-xbuild
 [embedded-wg]: https://github.com/rust-embedded/wg
+[panic-abort]: https://crates.io/crates/panic-abort
+[panic-halt]: https://crates.io/crates/panic-halt
+[panic-itm]: https://crates.io/crates/panic-itm
+[panic-semihosting]: https://crates.io/crates/panic-semihosting
 [portability-wg]: https://github.com/rust-lang-nursery/portability-wg
 [rust-lang/cargo]: https://github.com/rust-lang/cargo
 [rust-lang/rust]: https://github.com/rust-lang/rust
@@ -2190,6 +2946,7 @@ general feature for Cargo that could then apply to build-std too:
 [cargo#9976]: https://github.com/rust-lang/cargo/issues/9976
 [compiler-builtins#411]: https://github.com/rust-lang/compiler-builtins/pull/411
 [compiler-builtins#532]: https://github.com/rust-lang/compiler-builtins/pull/532
+[compiler-team#343]: https://github.com/rust-lang/compiler-team/issues/343
 [internals.r-l.o: Fleshing out libstd scenarios]: https://internals.rust-lang.org/t/fleshing-out-libstd-scenarios/4206
 [internals.r-l.o: Refactoring libstd for ultimate portability]: https://internals.rust-lang.org/t/refactoring-std-for-ultimate-portability/4301
 [jamesmunns/rfcs#1]: https://github.com/jamesmunns/rfcs/pull/1
@@ -2205,6 +2962,7 @@ general feature for Cargo that could then apply to build-std too:
 [rust#119899]: https://github.com/rust-lang/rust/pull/119899
 [rust#120232]: https://github.com/rust-lang/rust/pull/120232
 [rust#123360]: https://github.com/rust-lang/rust/pull/123360
+[rust#123617]: https://github.com/rust-lang/rust/pull/123617
 [rust#128534]: https://github.com/rust-lang/rust/pull/128534
 [rust#128534]: https://github.com/rust-lang/rust/pull/128534
 [rust#135395]: https://github.com/rust-lang/rust/pull/135395
@@ -2216,9 +2974,11 @@ general feature for Cargo that could then apply to build-std too:
 [rust#64316]: https://github.com/rust-lang/rust/pull/64316
 [rust#64319]: https://github.com/rust-lang/rust/issues/64319
 [rust#67074]: https://github.com/rust-lang/rust/issues/67074
+[rust#67650]: https://github.com/rust-lang/rust/issues/67650
 [rust#68887]: https://github.com/rust-lang/rust/issues/68887
 [rust#69608]: https://github.com/rust-lang/rust/pull/69608
 [rust#71009]: https://github.com/rust-lang/rust/pull/71009
+[rust#76185]: https://github.com/rust-lang/rust/pull/76185
 [rust#77086]: https://github.com/rust-lang/rust/pull/77086
 [rust#78790]: https://github.com/rust-lang/rust/pull/78790
 [rust#79218]: https://github.com/rust-lang/rust/pull/79218
@@ -2334,6 +3094,45 @@ general feature for Cargo that could then apply to build-std too:
 [sgx]: https://github.com/apache/incubator-teaclave-sgx-sdk
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
 [target-tier-policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
+
+[cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html
+[cargo-bench]: https://doc.rust-lang.org/cargo/commands/cargo-bench.html
+[cargo-build]: https://doc.rust-lang.org/cargo/commands/cargo-build.html
+[cargo-check]: https://doc.rust-lang.org/cargo/commands/cargo-check.html
+[cargo-clean]: https://doc.rust-lang.org/cargo/commands/cargo-clean.html
+[cargo-clippy]: https://doc.rust-lang.org/cargo/commands/cargo-clippy.html
+[cargo-doc]: https://doc.rust-lang.org/cargo/commands/cargo-doc.html
+[cargo-fetch]: https://doc.rust-lang.org/cargo/commands/cargo-fetch.html
+[cargo-fix]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
+[cargo-fmt]: https://doc.rust-lang.org/cargo/commands/cargo-fmt.html
+[cargo-generate-lockfile]: https://doc.rust-lang.org/cargo/commands/cargo-generate-lockfile.html
+[cargo-help]: https://doc.rust-lang.org/cargo/commands/cargo-help.html
+[cargo-info]: https://doc.rust-lang.org/cargo/commands/cargo-info.html
+[cargo-init]: https://doc.rust-lang.org/cargo/commands/cargo-init.html
+[cargo-install]: https://doc.rust-lang.org/cargo/commands/cargo-install.html
+[cargo-locate-project]: https://doc.rust-lang.org/cargo/commands/cargo-locate-project.html
+[cargo-login]: https://doc.rust-lang.org/cargo/commands/cargo-login.html
+[cargo-logout]: https://doc.rust-lang.org/cargo/commands/cargo-login.html
+[cargo-metadata]: https://doc.rust-lang.org/cargo/commands/cargo-metadata.html
+[cargo-miri]: https://doc.rust-lang.org/cargo/commands/cargo-miri.html
+[cargo-new]: https://doc.rust-lang.org/cargo/commands/cargo-new.html 
+[cargo-owner]: https://doc.rust-lang.org/cargo/commands/cargo-owner.html
+[cargo-package]: https://doc.rust-lang.org/cargo/commands/cargo-package.html
+[cargo-pkgid]: https://doc.rust-lang.org/cargo/commands/cargo-pkgid.html
+[cargo-publish]: https://doc.rust-lang.org/cargo/commands/cargo-publish.html
+[cargo-remove]: https://doc.rust-lang.org/cargo/commands/cargo-remove.html
+[cargo-report]: https://doc.rust-lang.org/cargo/commands/cargo-report.html
+[cargo-run]: https://doc.rust-lang.org/cargo/commands/cargo-run.html
+[cargo-rustc]: https://doc.rust-lang.org/cargo/commands/cargo-rustc.html
+[cargo-rustdoc]: https://doc.rust-lang.org/cargo/commands/cargo-rustdoc.html
+[cargo-search]: https://doc.rust-lang.org/cargo/commands/cargo-search.html
+[cargo-test]: https://doc.rust-lang.org/cargo/commands/cargo-test.html
+[cargo-tree]: https://doc.rust-lang.org/cargo/commands/cargo-tree.html
+[cargo-uninstall]: https://doc.rust-lang.org/cargo/commands/cargo-uninstall.html
+[cargo-update]: https://doc.rust-lang.org/cargo/commands/cargo-update.html
+[cargo-vendor]: https://doc.rust-lang.org/cargo/commands/cargo-vendor.html
+[cargo-version]: https://doc.rust-lang.org/cargo/commands/cargo-version.html
+[cargo-yank]: https://doc.rust-lang.org/cargo/commands/cargo-yank.html
 
 [12101111]: https://github.com/12101111
 [AZMCode]: https://github.com/AZMCode
