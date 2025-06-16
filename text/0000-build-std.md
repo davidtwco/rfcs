@@ -203,7 +203,7 @@ Custom targets can have `restricted_std` set depending on their value of the
 "os" part of the triple, just as built-in targets.
 
 ## Panic strategies
-[panic-strategies]: #panic-strategies
+[background-panic-strategies]: #panic-strategies
 
 Rust has the concept of a *panic handler*, which is a crate that is responsible
 for performing a panic. There are various panic handler crates on crates.io,
@@ -407,16 +407,14 @@ determine whether to emit an error.
 The existing `restricted_std` mechanism will be removed from the standard
 library's [`build.rs`][std-build.rs] as it is replaced by this mechanism.
 
+*See the following sections for rationale/alternatives:*
+- [*Should target specifications own knowledge of which standard library crates are supported?*][should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported]
+- [*Why replace `restricted_std` with explicit standard library support for a target?*][why-replace-restricted_std-with-explicit-standard-library-support-for-a-target]
+
 ### Custom targets and target-spec-json
 [custom-targets-and-target-spec-json]: #custom-targets-and-target-spec-json
 
-While custom targets can be used on stable today, in practice, they are only
-used on nightly as `-Zbuild-std` would need to be used to build at least `core`.
-As such, if build-std were to be stabilised, custom targets would become much
-more usable on stable toolchains. 
-
-In order to avoid users relying on the unstable target-spec-json format on a
-stable toolchain, Cargo will detect when a custom target is being used and
+, Cargo will detect when a custom target is being used and
 to build any of the standard library crates and will emit an error.
 
 Cargo could detect use of a custom target either by comparing it with the
@@ -425,8 +423,11 @@ file exists at the path matching the provided target name.
 
 Custom targets can still be used with build-std on nightly toolchains.
 
-*Enabling build-std with custom targets on stable toolchains is explored in
-[Future possibilities][future-possibilities]*
+*See the following sections for rationale/alternatives:*
+- [*Why disallow custom targets?*][why-disallow-custom-targets]
+
+*Allowing build-std with custom targets on stable toolchains is explored in
+[Future possibilities][future-possibilities].*
 
 ## Standard library dependencies
 [standard-library-dependencies]: #standard-library-dependencies
@@ -464,12 +465,11 @@ set to `true` and cannot be combined with any other dependency source. `builtin`
 can only be used with crates named `core`, `alloc` or `std`. crates.io will
 accept crates published which have `builtin` dependencies.
 
-Cargo already supports `path` and `git` dependencies for crates named `core`,
-`alloc` and `std` which continue to be supported and work as before.
+*See [Unresolved questions][unresolved-questions] to bikeshed `builtin = true`.*
 
-If multiple standard library crates are added as explicit dependencies, this
-behaves the same way as if crates A and B from crates.io are added to a manifest
-and A depends on B.
+Cargo already supports `path` and `git` dependencies for crates named `core`,
+`alloc` and `std` which continue to be supported and work as before. Multiple
+standard library crates can be added as dependencies.
 
 Standard library dependencies can be marked as `optional` and be enabled
 conditionally by a feature in the crate:
@@ -503,11 +503,17 @@ std = { .. }
 std = { path = "../libstd" }
 ```
 
-It also is not possible to perform source replacement on standard library
+It is not possible to perform source replacement on standard library
 dependencies.
 
 Implicit and explicit standard library dependencies are not added to
 `Cargo.lock`.
+
+*See the following sections for rationale/alternatives:*
+- [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][why-explicitly-declare-dependencies-on-the-standard-library-in-cargo-toml]
+- [*Why disallow explicit dependencies on other sysroot crates?*][why-disallow-explicit-dependencies-on-other-sysroot-crates]
+- [*Why not add standard library dependencies to Cargo.lock?*][why-not-add-standard-library-dependencies-to-cargo-lock]
+- [*Why permit patching of the standard library dependencies?*][why-permit-patching-of-the-standard-library-dependencies]
 
 ### Features
 [features]: #features
@@ -526,6 +532,9 @@ std = { builtin = true, features = [ "foo" ] } # not permitted
 # ..or..
 std = { builtin = true, default-features = false } # not permitted
 ```
+
+*See the following sections for rationale/alternatives:*
+- [*Why limit enabling standard library features to nightly?*][why-limit-enabling-standard-library-features-to-nightly]
 
 *Enabling and disabling features on explicit standard library dependencies when
 using a stable toolchain is explored in
@@ -563,21 +572,15 @@ Two new lints will be added to the compiler - `std_use` and `alloc_use`.
 
 rustc will always load the standard library, but if it is unused (which would be
 enforced by `#[deny(std_use)]`), then it will "forget" about the dependency.
+This is equivalent to the previous behaviour.
 
-This is functionally equivalent to the previous behaviour, but conceptually
-different - the crate's source code would no longer be a source-of-truth for
-whether or not it depends on the standard library (other than by using it or
-not, as with any other dependency).
+**TODO**: double-check with petrochenkov that this is achievable
+
+*See the following sections for rationale/alternatives:*
+- [*Why replace `#![no_std]` with `#![deny(std_use)]`?*][why-replace-no_std-with-deny-std_use]
 
 ### `rustc_dep_of_std`
 [rustc_dep_of_std]: #rustc_dep_of_std
-
-The `rustc_dep_of_std` feature is used to add an explicit dependency on the
-standard library crates for dependencies of the standard library. When
-`rustc_dep_of_std` is enabled, dependencies on
-`rustc-std-workspace-{core,alloc,std}` are added, which would normally resolve
-to empty crates and are replaced with a `path` dependency to the local checkout
-of [rust-lang/rust].
 
 With first-class explicit dependencies on the standard library,
 `rustc_dep_of_std` is rendered unnecessary and explicit dependencies on the
@@ -690,6 +693,23 @@ dependencies on the standard library, these users will no longer need to rely on
 any nightly features to build the standard library (if this iteration of
 build-std is eventually stabilised).
 
+*See the following sections for rationale/alternatives:*
+- [*Why prevent rustc from loading root dependencies from the sysroot?*][why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]
+- [*Why use `noprelude` with `--extern`?*][why-use-noprelude-with-extern]
+- [*Why rebuild the standard library automatically?*][why-rebuild-the-standard-library-automatically]
+- [*Why not always rebuild when the profile changes?*][why-not-always-rebuild-when-the-profile-changes]
+- [*Why not ship a debug profile `rust-std`?*][why-not-ship-a-debug-profile-rust-std]
+- [*Why use the lockfile of the `rust-src` component?*][why-use-the-lockfile-of-the-rust-src-component]
+- [*Why default to assuming the pre-built standard library is the release profile? *][why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]
+- [*Why respect the profile of the standard library workspace?*][why-respect-the-profile-of-the-standard-library-workspace]
+- [*Why merge the user's profile and the standard library workspace's profile?*][why-merge-the-users-profile-and-the-standard-library-workspaces-profile]
+- [*Why not allow profile overrides to override the standard library's dependencies?*][why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies]
+- [*Why not build the standard library in incremental?*][why-not-build-the-standard-library-in-incremental]
+- [*Why not produce a `dylib` for the standard library?*][why-not-produce-a-dylib-for-the-standard-library]
+- [*Why also build `proc_macro`, `test` and `profiler_builtins`?*][why-also-build-proc_macro-test-and-profiler_builtins]
+- [*Why not globally cache builds of the standard library?*][why-not-globally-cache-builds-of-the-standard-library]
+- [*Why permit breakage of nightly build-std users using tier three targets?*][why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets]
+
 ### Vendored `rust-src`
 [vendored-rust-src]: #vendored-rust-src
 
@@ -707,6 +727,11 @@ Cargo will not perform any checks to ensure that the sources in `rust-src` have
 been modified. It will be documented that modifying these sources is not
 supported.
 
+*See the following sections for rationale/alternatives:*
+- [*Why not check if `rust-src` has been modified?*][why-not-check-if-rust-src-has-been-modified]
+- [*Why vendor standard library dependencies?*][why-vendor-standard-library-dependencies]
+- [*Why not allow the source path for the standard library be customised?*][why-not-allow-the-source-path-for-the-standard-library-be-customised]
+
 ### Building the standard library on a stable toolchain
 [building-the-standard-library-on-a-stable-toolchain]: #building-the-standard-library-on-a-stable-toolchain
 
@@ -720,8 +745,11 @@ rustc will automatically assume `RUSTC_BOOTSTRAP` when the source path of the
 crate being compiled is within the same sysroot as the rustc binary being
 invoked.
 
+*See the following sections for rationale/alternatives:*
+- [*Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?*][why-allow-building-from-the-sysroot-with-implied-rustc-bootstrap]
+
 ### Panic strategies
-[panic-strategies]: #panic-strategies
+[panic-strategies]: #panic-strategies-1
 
 Panic strategies are unlike other profile settings insofar as they influence
 which crates and flags are passed to the standard library. For example. if
@@ -751,6 +779,9 @@ Tests, benchmarks, build scripts and proc macros continue to ignore the "panic"
 setting and `panic = "unwind"` is always used. Once `panic-abort-tests` is
 stabilised, the standard library can be built with the profile's panic strategy
 even for tests, benchmarks, build scripts and procedural macros.
+
+*Possibilities for avoiding unnecessary `panic_unwind` builds are explored in
+[Future possibilities][future-possibilities].*
 
 ### Special object files
 [special-object-files]: #special-object-files
@@ -981,6 +1012,9 @@ edition = "2024"
 std = { builtin = true, public = true }
 ```
 
+*See the following sections for rationale/alternatives:*
+- [*Why default to public for the implicit standard library dependencies?*][why-default-to-public-for-the-implicit-standard-library-dependencies]
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -991,23 +1025,33 @@ std = { builtin = true, public = true }
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-> - Why is this design the best in the space of possible designs?
-> - What other designs have been considered and what is the rationale for
->   not choosing them?
-> - What is the impact of not doing this?
-> - If this is a language proposal, could this be done in a library or macro
->   instead? Does the proposed change make Rust code easier or harder to
->   read, understand, and maintain?
+This section aims to justify all of the decisions made in the proposed design
+from [*Reference-level explanation*][reference-level-explanation] and discuss
+why alternatives were not chosen.
 
-**TODO:** after context sections accepted
+## Why not do nothing?
+[why-not-do-nothing]: #why-not-do-nothing
+
+## Should target specifications own knowledge of which standard library crates are supported?
+[should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported]: #should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported
 
 ## Why replace `restricted_std` with explicit standard library support for a target?
 [why-replace-restricted_std-with-explicit-standard-library-support-for-a-target]: #why-replace-restricted_std-with-explicit-standard-library-support-for-a-target
 
-...
+## Why disallow custom targets?
+[why-disallow-custom-targets]: #why-disallow-custom-targets
 
-## Why explicitly declare dependencies on the standard library on `Cargo.toml`?
-[why-explicitly-declare-dependencies-on-the-standard-library-on-cargo-toml]: #why-explicitly-declare-dependencies-on-the-standard-library-on-cargo-toml
+While custom targets can be used on stable today, in practice, they are only
+used on nightly as `-Zbuild-std` would need to be used to build at least `core`.
+As such, if build-std were to be stabilised, custom targets would become much
+more usable on stable toolchains.
+
+In order to avoid users relying on the unstable target-spec-json format on a
+stable toolchain, using them with build-std on a stable toolchain is disallowed
+until it can be considered separately.
+
+## Why explicitly declare dependencies on the standard library in `Cargo.toml`?
+[why-explicitly-declare-dependencies-on-the-standard-library-in-cargo-toml]: #why-explicitly-declare-dependencies-on-the-standard-library-in-cargotoml
 
 If there are no explicit dependencies on standard library crates, Cargo would need
 to be able to determine which standard library crates to build when this is required:
@@ -1031,7 +1075,20 @@ the standard syntax for this would be necessary, such as a flag (e.g.
 `-Zbuild-std-features`) or option in Cargo's configuration. This also applies to
 optional dependencies, public/private features, etc.
 
+## Why disallow explicit dependencies on other sysroot crates?
+[why-disallow-explicit-dependencies-on-other-sysroot-crates]: #why-disallow-explicit-dependencies-on-other-sysroot-crates
+
+## Why not add standard library dependencies to `Cargo.lock`?
+[why-not-add-standard-library-dependencies-to-cargo-lock]: #why-not-add-standard-library-dependencies-to-cargolock
+
+## Why permit patching of the standard library dependencies?
+[why-permit-patching-of-the-standard-library-dependencies]: #why-permit-patching-of-the-standard-library-dependencies 
+
+## Why limit enabling standard library features to nightly?
+[why-limit-enabling-standard-library-features-to-nightly]: #why-limit-enabling-standard-library-features-to-nightly
+
 ## Why replace `#![no_std]` with `#![deny(std_use)]`?
+[why-replace-no_std-with-deny-std_use]:#why-replace-no_std-with-denystd_use
 
 ## Why prevent rustc from loading root dependencies from the sysroot?
 [why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]: #why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot
@@ -1057,15 +1114,58 @@ rustc's usability when invoked outside of Cargo, e.g. by compiler developers.
 
 **TODO:** why not use `--sysroot=''` instead?
 
-## Why re-build the standard library automatically?
-[why-re-build-the-standard-library-automatically]: #why-re-build-the-standard-library-automatically
+## Why rebuild the standard library automatically?
+[why-rebuild-the-standard-library-automatically]: #why-rebuild-the-standard-library-automatically
 
-...
+**TODO**: why not have a flag or an opt-in
+
+## Why use `noprelude` with `--extern`?
+[why-use-noprelude-with-extern]: #why-use-noprelude-with---extern
+
+## Why not always rebuild when the profile changes?
+[why-not-always-rebuild-when-the-profile-changes]: #why-not-always-rebuild-when-the-profile-changes
 
 ## Why vendor the standard library's dependencies?
 [why-vendor-the-standard-librarys-dependencies]: #why-vendor-the-standard-librarys-dependencies
 
-...
+## Why not ship a debug profile `rust-std`?
+[why-not-ship-a-debug-profile-rust-std]: #why-not-ship-a-debug-profile-rust-std
+
+## Why use the lockfile of the `rust-src` component?
+[why-use-the-lockfile-of-the-rust-src-component]: #why-use-the-lockfile-of-the-rust-src-component
+
+## Why default to assuming the pre-built standard library is the release profile? 
+[why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]: #why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile
+
+## Why respect the profile of the standard library workspace?
+[why-respect-the-profile-of-the-standard-library-workspace]: #why-respect-the-profile-of-the-standard-library-workspace
+
+## Why merge the user's profile and the standard library workspace's profile?
+[why-merge-the-users-profile-and-the-standard-library-workspaces-profile]: #why-merge-the-users-profile-and-the-standard-library-workspaces-profile
+
+## Why not allow profile overrides to override the standard library's dependencies?
+[why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies]: #why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies
+
+## Why not build the standard library in incremental?
+[why-not-build-the-standard-library-in-incremental]: #why-not-build-the-standard-library-in-incremental
+
+## Why not produce a `dylib` for the standard library?
+[why-not-produce-a-dylib-for-the-standard-library]: #why-not-produce-a-dylib-for-the-standard-library
+
+## Why also build `proc_macro`, `test` and `profiler_builtins`?
+[why-also-build-proc_macro-test-and-profiler_builtins]: #why-also-build-proc_macro-test-and-profiler_builtins
+
+## Why not globally cache builds of the standard library?
+[why-not-globally-cache-builds-of-the-standard-library]: #why-not-globally-cache-builds-of-the-standard-library
+
+The standard library is no different than regular dependencies in being able to
+benefit from global caching of dependency builds. A generic proposal for global
+dependency caching could support the standard library. It is out-of-scope of
+this proposal to propose a special-cased mechanism for this that applies only to
+the standard library.
+
+## Why permit breakage of nightly build-std users using tier three targets?
+[why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets]: #why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets
 
 ## Why not check if `rust-src` has been modified?
 [why-not-check-if-rust-src-has-been-modified]: #why-not-check-if-rust-src-has-been-modified
@@ -1077,14 +1177,19 @@ Any crate that depends on `rust-src` having been modified would not be usable
 when published to crates.io as the required modifications will obviously not be
 included.
 
-## Why not globally cache builds of the standard library?
-[why-not-globally-cache-builds-of-the-standard-library]: #why-not-globally-cache-builds-of-the-standard-library
+## Why vendor standard library dependencies?
+[why-vendor-standard-library-dependencies]: #why-vendor-standard-library-dependencies
 
-The standard library is no different than regular dependencies in being able to
-benefit from global caching of dependency builds. A generic proposal for global
-dependency caching could support the standard library. It is out-of-scope of
-this proposal to propose a special-cased mechanism for this that applies only to
-the standard library.
+## Why not allow the source path for the standard library be customised?
+[why-not-allow-the-source-path-for-the-standard-library-be-customised]: #why-not-allow-the-source-path-for-the-standard-library-be-customised
+
+## Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?
+[why-allow-building-from-the-sysroot-with-implied-rustc-bootstrap]: #why-allow-building-from-the-sysroot-with-implied-rustc_bootstrap
+
+**TODO**: explain RfL motivation and why not hardcode crate names instead, etc.
+
+## Why default to public for the implicit standard library dependencies?
+[why-default-to-public-for-the-implicit-standard-library-dependencies]: #why-default-to-public-for-the-implicit-standard-library-dependencies
 
 # Prior art
 [prior-art]: #prior-art
@@ -1094,7 +1199,7 @@ source material, which is exhaustively surveyed in
 [Appendix I: Exhaustive literature review][appendix-i].*
 
 ## [rfcs#1133] (2015)
-[rfcs-1133-2015]: #rfcs-1133-2015
+[rfcs-1133-2015]: #rfcs1133-2015
 
 build-std was first proposed in a [2015 RFC (rfcs#1133))][rfcs#1133] by
 [Ericson2314], aiming to improve support for targets that do not have a
@@ -1122,7 +1227,7 @@ by Cargo having a mechanism to have unstable features and then closed in favour
 of [cargo#4959].
 
 ## [xargo] and [cargo#4959] (2016)
-[xargo-and-cargo-4959-2016]: #xargo-and-cargo-4959-2016
+[xargo-and-cargo-4959-2016]: #xargo-and-cargo4959-2016
 
 While the discussions around [rfcs#1133] where ongoing, [xargo] was released
 in 2016. Xargo is a Cargo wrapper that builds a sysroot with a customised standard
@@ -1154,7 +1259,7 @@ first-class and user-friendly approach that has many tricky design
 implications.
 
 ## [rfcs#2663] (2019)
-[rfcs-2663-2019]: #rfcs-2663-2019
+[rfcs-2663-2019]: #rfcs2663-2019
 
 In 2019, [*rfcs#2663: `std` Aware Cargo*][rfcs#2663] was opened as the most
 recent RFC attempting to advance build-std. [rfcs#2663] shared many of the
@@ -1540,43 +1645,26 @@ are related or would be beneficial for build-std:
 > We'll use this section to describe how our proposal is different from what
 > came before - what are the key differentiating details
 
-**TODO:** after context sections accepted
+**TODO:** complete this
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-> - What parts of the design do you expect to resolve through the RFC process
->   before this gets merged?
-> - What parts of the design do you expect to resolve through the
->   implementation of this feature before stabilization?
-> - What related issues do you consider out of scope for this RFC that could
->   be addressed in the future independently of the solution that comes out
->   of this RFC?
+The following small details are likely to be bikeshed prior to RFC acceptance or
+stabilisation and aren't pertinent to the overall design:
 
-**TODO:** after context sections accepted
+- Bikeshed: What syntax is used to identify dependencies on the standard library
+  in `Cargo.toml`?
+  - e.g. `builtin = true`, `version = "*"` or something else
+
+The following details are to be worked out during implementation:
+
+- None
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
-> Think about what the natural extension and evolution of your proposal would
-> be and how it would affect the language and project as a whole in a holistic
-> way. Try to use this section as a tool to more fully consider all possible
-> interactions with the project and language in your proposal.
-> Also consider how this all fits into the roadmap for the project
-> and of the relevant sub-team.
-> 
-> This is also a good place to "dump ideas", if they are out of scope for the
-> RFC you are writing but otherwise related.
-> 
-> If you have tried and cannot think of any future possibilities,
-> you may simply state that you cannot think of anything.
-> 
-> Note that having something written down in the future-possibilities section
-> is not a reason to accept the current or a future RFC; such notes should be
-> in the section on motivation or rationale in this or subsequent RFCs.
-> The section merely provides additional information.
-
-**TODO:** after context sections accepted
+There are many possible follow-ups to build-std:
 
 - Relax restriction preventing custom targets from being used with build-std
   - This would require a decision from the relevant teams on the exact stability
@@ -1610,7 +1698,7 @@ sufficient, but this section should help if more detail is desired on some
 referenced material.
 
 ## [rfcs#1133] (2015)
-[a1-rfcs-1133-2015]: #rfcs-1133-2015-1
+[a1-rfcs-1133-2015]: #rfcs1133-2015-1
 
 This section contains all of the sources related to [rfcs#1133].
 
@@ -1755,7 +1843,7 @@ This section contains all of the sources related to [rfcs#1133].
   - This issue received no feedback
   
 ## [xargo] and [cargo#4959] (2016)
-[a1-xargo-and-cargo-4959-2016]: #xargo-and-cargo-4959-2016-1
+[a1-xargo-and-cargo-4959-2016]: #xargo-and-cargo4959-2016-1
 
 This section contains all of the sources related to [xargo] and [cargo#4959]:
 
@@ -1825,7 +1913,7 @@ This section contains all of the sources related to [xargo] and [cargo#4959]:
   - Now recommends using `--build-std` in Cargo instead
 
 ## [rfcs#2663] (2019)
-[a1-rfcs-2663-2019]: #rfcs-2663-2019-1
+[a1-rfcs-2663-2019]: #rfcs2663-2019-1
 
 This section contains all of the sources related to [rfcs#2663]:
 
@@ -2118,7 +2206,7 @@ build-std:
   - Closed as duplicate of [wg-cargo-std-aware#7]
 
 ### Support for build-std in Cargo's subcommands
-[support-for-build-std-in-cargo-subcommands]: #support-for-build-std-in-cargo-subcommands 
+[support-for-build-std-in-cargo-subcommands]: #support-for-build-std-in-cargos-subcommands 
 
 These issues discuss the complexity involved in supporting build-std in specific
 subcommands of Cargo:
@@ -2185,7 +2273,7 @@ subcommands of Cargo:
     [wg-cargo-std-aware#26]
 
 ### Dependencies of the standard library
-[dependencies-of-the-standard-library]: #dependencies-of-the-standard-library
+[appendix-dependencies-of-the-standard-library]: #dependencies-of-the-standard-library-1
 
 These issues discuss the challenges involved in building some of the
 dependencies of the standard library:
@@ -3018,7 +3106,6 @@ general feature for Cargo that could then apply to build-std too:
 [rust#123360]: https://github.com/rust-lang/rust/pull/123360
 [rust#123617]: https://github.com/rust-lang/rust/pull/123617
 [rust#128534]: https://github.com/rust-lang/rust/pull/128534
-[rust#128534]: https://github.com/rust-lang/rust/pull/128534
 [rust#135395]: https://github.com/rust-lang/rust/pull/135395
 [rust#136966]: https://github.com/rust-lang/rust/issues/136966
 [rust#31605]: https://github.com/rust-lang/rust/pull/31605
@@ -3149,6 +3236,7 @@ general feature for Cargo that could then apply to build-std too:
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
 [std-unsupported]: https://github.com/rust-lang/rust/blob/f768dc01da9a681716724418ccf64ce55bd396c5/library/std/src/sys/pal/mod.rs#L68-L69
 [target-tier-policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
+[platform-support]: https://doc.rust-lang.org/nightly/rustc/platform-support.html
 
 [cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html
 [cargo-bench]: https://doc.rust-lang.org/cargo/commands/cargo-bench.html
@@ -3239,6 +3327,7 @@ general feature for Cargo that could then apply to build-std too:
 [rust-osdev]: https://github.com/rust-osdev
 [saethlin]: https://github.com/saethlin
 [skyzh]: https://github.com/skyzh
+[tamird]: https://github.com/tamird
 [tmiasko]: https://github.com/tmiasko
 [tomaak]: https://github.com/tomaak
 [vi]: https://github.com/vi
