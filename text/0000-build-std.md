@@ -1050,6 +1050,9 @@ std = { builtin = true, public = true }
 *See the following sections for rationale/alternatives:*
 - [*Why default to public for the implicit standard library dependencies?*][why-default-to-public-for-the-implicit-standard-library-dependencies]
 
+**TODO**: document new constraints on std - no new C dependencies, no
+target-specific features (like compiler-builtins/mem)
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
