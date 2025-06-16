@@ -651,7 +651,7 @@ Artifact dependencies use the same standard library as the rest of the crate
 (pre-built or newly-built, as appropriate).
 
 *See the following sections for rationale/alternatives:*
-- [*Why default to assuming the pre-built standard library is the release profile? *][why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]
+- [*Why default to assuming the pre-built standard library is the release profile?*][why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]
 - [*Why respect the profile of the standard library workspace?*][why-respect-the-profile-of-the-standard-library-workspace]
 - [*Why merge the user's profile and the standard library workspace's profile?*][why-merge-the-users-profile-and-the-standard-library-workspaces-profile]
 - [*Why not allow profile overrides to override the standard library's dependencies?*][why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies]
