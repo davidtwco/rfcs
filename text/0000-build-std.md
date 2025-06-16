@@ -27,7 +27,8 @@ discussion that this RFC has.
 
 This RFC would not have been possible without the advice, feedback and support
 of [Josh Triplett][joshtriplett], [Eric Huss][ehuss] and
-[Wesley Wiser][wesleywiser].
+[Wesley Wiser][wesleywiser]. Thanks to [mati865][mati865] for advising on some
+of the specifics related to special object files.
 
 adam, ed (for opaque)
 
@@ -57,7 +58,7 @@ rationale:
   start a project or do a clean build
 - The standard library has and has had dependencies which require a more complicated
   build environment than typical Rust projects
-  - e.g. requiring a working C toolchain to build `libbacktrace` (prior to [rust#46439])
+  - e.g. requiring a working C toolchain to build `compiler-builtins`' `c` feature
 - To varying degrees at different times in its development, the standard library's
   implementation has been tied to the compiler implementation and has had to change
   in lockstep
@@ -151,7 +152,7 @@ dependencies:
     but is often used by `no_std` crates when there is not a system `libc`
 - To use sanitizers, the sanitizer runtimes from LLVM's compiler-rt need to
   be linked against. Building of these is enabled in `bootstrap.toml`
-  ([`build.sanitizers`][bootstrap-sanitizers]) and they are not currently
+  ([`build.sanitizers`][bootstrap-sanitizers]) and they are
   included in the rustup components shipped by the project.
 
 ## Cargo features of the standard library
@@ -217,8 +218,7 @@ doesn't guarantee that the unwind strategy is used, as the target may not
 support it.
 
 Both crates are compiled and shipped with the pre-built standard library for
-targets which support `std`. All targets which support `std` default to the
-unwinding panic strategy. Some targets have a pre-built standard library with
+targets which support `std`. Some targets have a pre-built standard library with
 only `core` and `alloc` crates, such as the `x86_64-unknown-none` target. While
 `x86_64-unknown-none` defaults to the `abort` panic strategy, as this target
 does not support the standard library, this default isn't actually relevant.
@@ -261,7 +261,7 @@ This RFC aims to support the following use cases:
    `target-feature` can improve the performance of code generation or allow the
    use of newer hardware features than the target's baseline provides. As above,
    these configuration will not apply to the pre-built standard library
- - While the pre-built standard library is to support debugging without
+ - While the pre-built standard library is built to support debugging without
    compromising size and performance by setting `debuginfo=1`, this isn't
    ideal, and building the standard library with the dev profile would provide
    a better experience
@@ -280,20 +280,18 @@ This RFC aims to support the following use cases:
     for Linux want to be able to build an unmodified `core` from `rust-src` in
     the sysroot on a stable toolchain without Cargo
   - Cargo may also want a mechanism to build the standard library for build-std
-    on a stable toolchain without relying on `RUST_BOOTSTRAP`
-1. **Building standard library crates than are not shipped for a target**
-  - Profile-guided optimisation requires the `profiler_builtins` crate which is not
-    currently distributed as part of the `rust-std` rustup component
+    on a stable toolchain without relying on `RUSTC_BOOTSTRAP`
+1. **Building standard library crates that are not shipped for a target**
   - Targets which have limited `std` support may wish to use the subsets of the
     standard library which do work
-1. **Using the standard library with tier three targets**
+2. **Using the standard library with tier three targets**
   - There is no stable mechanism for using the standard library on a tier three
     target that does not ship a pre-built std
   - While it is common for these targets to not support the standard library,
     they should be able to use `core`
   - These users are forced to use nightly and the unstable `-Zbuild-std`
     feature or third-party tools like [cargo-xbuild] (formerly [xargo])
-1. **Using miri on a stable toolchain**
+3. **Using miri on a stable toolchain**
   - Using miri requires building the standard library with specific compiler flags
     that would not be appropriate for the pre-built standard library, so is forced
     to require nightly and build its own sysroot
@@ -613,8 +611,10 @@ standard library depending on the value of the `build-std` key:
   only if it has an identical configuration to the current profile.
 
 **TODO:** how does it know if the profile matches and what about profile overrides
-**TODO:** which dependencies of std are built, what about proc_macro, libtest, etc.
+**TODO:** compiler builtins' codegen-units
+**TODO:** which dependencies of std are built, what about proc_macro, libtest, etc. is it the sysroot crate? etc.?
 **TODO:** libunwind is in self-contained, does it need to be in a not rust-std component?
+**TODO:** breakage on non-std targets?
 
 When the pre-built standard library is not used or available, Cargo will build
 and use the standard library from source with the requested profile. See
@@ -660,12 +660,12 @@ supported.
 [building-the-standard-library-on-a-stable-toolchain]: #building-the-standard-library-on-a-stable-toolchain
 
 Cargo needs to be able to build the standard library crates, which inherently
-require a nightly toolchain. It could use `RUST_BOOTSTRAP` to do this even with
+require a nightly toolchain. It could use `RUSTC_BOOTSTRAP` to do this even with
 a stable toolchain, however this requirement is shared with other projects such
 as Rust for Linux, that want to build an unmodified `core` crate with a stable
 toolchain.
 
-rustc will automatically assume `RUST_BOOTSTRAP` when the source path of the
+rustc will automatically assume `RUSTC_BOOTSTRAP` when the source path of the
 crate being compiled is within the same sysroot as the rustc binary being
 invoked.
 
@@ -737,23 +737,13 @@ It is out-of-scope for this RFC to propose stabilising sanitizers or to expose
 sanitizer configuration in Cargo, but it is instructive to examine how build-std
 would enable sanitiser support to ensure that the proposed design is compatible.
 
-Some sanitizers require a sanitizer runtime to be present, which are part of the
-`compiler-rt` project in LLVM. These are currently built when
-[`build.sanitizers`][bootstrap-sanitizers] is set in `bootstrap`.
-
-Existing efforts to stabilise sanitizers ([rust#123617]) propose stabilising
-sanitizers on a per-sanitizer per-target basis. This is necessarily the case as
-sanitizer runtimes are not available for all of Rust's targets. rustc's flag to
-enable sanitizers will be a target modifier, as the instrumentation must be
-present for all of the crates to avoid false positives.
+rustc's flag to enable sanitizers will be a target modifier, as the
+instrumentation must be present for all of the crates to avoid false positives.
 
 rustc's sanitizer support attempts to locate sanitizer runtimes in the sysroot
-(`$sysroot/lib/rustlib/$target/lib/`) to link against. Rust can start to ship
-`rust-sanitizers-$target` components with the sanitizer runtimes for targets
-that support sanitizers. As long as this component has been downloaded,
-build-std would trigger whenever sanitizers are enabled in Cargo (however that
-ends up being exposed), as sanitizers are a target modifier, and the sanitized
-build would succeed as the runtimes are present.
+(`$sysroot/lib/rustlib/$target/lib/`) to link against. Rust already ships
+sanitizer runtimes for targets that support sanitizers, so all that is necessary
+is to be able to rebuild the standard library crates, which build-std enables.
 
 ### Profiling
 [profiling]: #profiling
@@ -1020,6 +1010,8 @@ of that crate which are also in the sysroot.
 `--no-implicit-sysroot-deps` is a flag rather than default behaviour to preserve
 rustc's usability when invoked outside of Cargo, e.g. by compiler developers.
 
+**TODO:** why not use `--sysroot=''` instead?
+
 ## Why re-build the standard library automatically?
 [why-re-build-the-standard-library-automatically]: #why-re-build-the-standard-library-automatically
 
@@ -1054,7 +1046,7 @@ the standard library.
 
 *The following summary of the prior art is necessarily less detailed than the
 source material, which is exhaustively surveyed in
-[Appendix I: Exhasutive literature review][appendix-i].*
+[Appendix I: Exhaustive literature review][appendix-i].*
 
 ## [rfcs#1133] (2015)
 [rfcs-1133-2015]: #rfcs-1133-2015
@@ -1094,7 +1086,7 @@ performs the same operation as `cargo build` but with a customised standard
 library). Configuration for the customised standard library was configured
 in the `Xargo.toml`, supporting configuring codegen flags, profile settings,
 Cargo features and multi-stage builds. It required nightly to build the
-standard library as it did not use `RUST_BOOTSTRAP`. Xargo had inherent
+standard library as it did not use `RUSTC_BOOTSTRAP`. Xargo had inherent
 limitations due to being a Cargo wrapper, leading to suggestions that its
 functionality be integrated into Cargo.
 
@@ -1218,13 +1210,14 @@ categories:
    [`libbacktrace`][wg-cargo-std-aware#16] previously required a C compiler to build
    `backtrace-sys`, but now uses `gimli` internally.
 
-   [`compiler_builtins`][wg-cargo-std-aware#15] has a `c` feature that uses C versions
-   of some intrinsics that are more optimised. This is used by the pre-built standard
-   library, and if not used by build-std, could be a point of divergence. It also has
-   a `mem` feature which provides symbols (`memcopy`, etc) for platforms without `std`
-   that don't have these same symbols provided by `libc`. compiler-builtins is also
-   built with a large number of compilation units to force each function into a
-   different unit.
+   [`compiler_builtins`][wg-cargo-std-aware#15] has a `c` feature that uses C
+   versions of some intrinsics that are more optimised. This is used by the
+   pre-built standard library, and if not used by build-std, could be a point of
+   divergence. `compiler-builtins/c` can have a significant impact on code
+   quality and build size. It also has a `mem` feature which provides symbols
+   (`memcopy`, etc) for platforms without `std` that don't have these same
+   symbols provided by `libc`. compiler-builtins is also built with a large
+   number of compilation units to force each function into a different unit.
 
    [Sanitizers][wg-cargo-std-aware#17], when enabled, require a sanitizer runtime
    to be present. These are currently built by bootstrap and part of LLVM.
@@ -1247,8 +1240,12 @@ categories:
    standard library versus implicitly, or on whether the pre-built-ness of a dependency
    should be surfaced to the user.
 
-   [wg-cargo-std-aware#6] argues that target-spec-json would be de-facto stable if
-   it can be used by build-std on stable, and this would need an explicit decision.
+   [wg-cargo-std-aware#6] argues that target-spec-json would be de-facto stable
+   if it can be used by build-std on stable. While `--target=custom.json` can be
+   used on stable today, it effectively requires build-std and so a nightly
+   toolchain. As build-std enables custom targets to be used on stable, this
+   would effectively be a greater commitment to the current stability of custom
+   targets than currently exists and would warrant an explicit decision.
 
    [wg-cargo-std-aware#8] highlighted that a more-portable standard library would
    be beneficial for build-std (i.e. a `std` that could build on any target), but
@@ -1322,7 +1319,8 @@ categories:
 
    [wg-cargo-std-aware#68] notices that `profiler_builtins` needs to be compiled
    after `core` (i.e. `core` can't be compiled with profiling). The error message
-   has been improved for this but there was otherwise no commentary. 
+   has been improved for this but there was otherwise no commentary. This has changed
+   since the issue was filed, as `profiler_builtins` is now a `#![no_core]` crate.
 
    [wg-cargo-std-aware#85] considers that there has to be a deliberate testing
    strategy in place between the [rust-lang/rust] and [rust-lang/cargo]
@@ -1384,7 +1382,7 @@ pre-built standard library from the sysroot.
 `-Zbuild-std` builds `std` by default. `test` is also built if tests are being
 run. Optionally, users can provide the list of crates to be built, though this
 was intended as an escape hatch to work around bugs - the arguments to the flag
-are inherently unstable since the names of crates comprising the standard
+are semi-unstable since the names of crates comprising the standard
 library are not stable.
 
 Cargo has a hardcoded list of what dependencies need to be added for a given
@@ -1421,16 +1419,15 @@ things to build with the user's crates depending on the standard library's
 crates. Some additional work is done to deduplicate crates across the graph and
 then this crate graph is used to drive work (usually `rustc` invocations) as
 usual. This approach allows for build-time parallelism and sharing of crates
-between the two separate resolves but does involve a lot of `build-std`-specific
-logic in and around the resolver - an important and complicated part of Cargo.
+between the two separate resolves but does involve `build-std`-specific logic in
+and around unit generation.
 
-When first implemented, the multiple resolver approach was considered a
-short-term solution and that it was "quite messy and causes a lot of
-complications". While alternative solutions have been proposed
-([wg-cargo-std-aware#64]), they have their own complications, multiple resolves
-helps guarantee that the exact dependency versions of the pre-built standard
-library are used, which is a key constraint ([wg-cargo-std-aware#12]). Locking
-the standard library could also help ([wg-cargo-std-aware#38]).
+Resolving the standard library separately from the user's crate helps guarantee
+that the exact dependency versions of the pre-built standard library are used,
+which is a key constraint ([wg-cargo-std-aware#12]). Locking the standard
+library could also help ([wg-cargo-std-aware#38]). A consequence of this is that
+each of the Cargo subcommands (e.g. `cargo metadata`) need to have special
+support for build-std implemented, but this might be desirable.
 
 The standard library crates are considered non-local packages and so are not
 compiled with incremental compilation or dep-info fingerprint tracking and any
@@ -1450,18 +1447,22 @@ Host dependencies like build scripts and `proc_macro` crates use the
 existing pre-built standard library from the sysroot, so Cargo does not
 pass `--extern` to those.
 
-Modifications to the standard library are not supported. While build-std does
+Modifications to the standard library are not supported. While build-std
 has no mechanism to detect or prevent modifications to the `rust-src` content,
 rebuilds aren't triggered automatically on modifications. The user cannot
 override dependencies in the standard library workspace with `[patch]` sections
 of their `Cargo.toml`.
 
-To prevent the user from using `std` on an unsupported target and running into
-bugs, some target filtering exists in `std`'s [`build.rs`][std-build.rs] which
-marks the standard library as unstable for unsupported targets. Users enable the
-`restricted_std` feature in their crates to opt into this instability. This
-mechanism has been noted as confusing ([wg-cargo-std-aware#87]) and has the
-issue that the user cannot opt into the feature on behalf of dependencies
+To simplify build-std in Cargo, build-std wants to be able to always build
+`std`, which is accomplished through use of the
+[`unsupported` module in `std`'s platform abstraction layer][std-unsupported],
+and `restricted_std`. `std` checks for unsupported targets in its
+[`build.rs`][std-build.rs] and applies the `restricted_std` cfg which marks the
+standard library as unstable for unsupported targets.
+
+Users can enable the `restricted_std` feature in their crates. This mechanism
+has been noted as confusing ([wg-cargo-std-aware#87]) and has the issue that the
+user cannot opt into the feature on behalf of dependencies
 ([wg-cargo-std-aware#69]).
 
 The initial implementation does not include support for build-std in many of
@@ -1553,7 +1554,10 @@ are related or would be beneficial for build-std:
 This section will attempt to summarize every issue, pull request, RFC and
 discussion related to the design and implementation of build-std since its
 conception in May 2015. If anything has been omitted then that's just an
-oversight and it can be added.
+oversight and it can be added. The summaries may not reflect current up-to-date
+information if those updates weren't in the discussion being summarized.
+Up-to-date information should be present when these issues are referenced in the
+previous sections.
 
 This section's level of detail is not strictly necessary to understand this RFC,
 the summary at the start of the [Prior art][prior-art] section should be
@@ -1815,7 +1819,7 @@ This section contains all of the sources related to [rfcs#2663]:
           - It isn't explained why this is a necessary implication
         - Rust implementation of `compiler_builtins` would need to be used for
           custom targets
-        - `RUST_BOOTSTRAP` needs to be set for core
+        - `RUSTC_BOOTSTRAP` needs to be set for core
     - Allow use of "stable" Cargo features from Cargo
       - This section proposes that a mechanism exist to declare Cargo features
         as stable and unstable and that only stable features be usable on the
@@ -2298,7 +2302,7 @@ These issues document open design questions for build-std:
     [wg-cargo-std-aware#14 (comment)][wg-cargo-std-aware#14-review]
 - **[Pre-Pre-RFC: making `std`-dependent Cargo features features a first-class
   concept][wg-cargo-std-aware#5-internals]**, [bascule], Aug 2019
-  - API guideslines say that Cargo features should be strictly additive and that
+  - API guidelines say that Cargo features should be strictly additive and that
     gating std support should be behind a `std` feature
     - `no_std` users end up always using `default-features = false` and opting
       into everything except `std`
@@ -2392,7 +2396,7 @@ These issues document open design questions for build-std:
   - `rust-lld` could be shipped as a rustup component or the user could be
     forced to install these components
     - Since this issue was filed, `rust-lld` is now always shipped
-  - rustc finds `rust-lld` via `--sysroot` and if the sysroot is not provided
+  - rustc finds `rust-lld` via the sysroot and if the sysroot is not provided
     then another mechanism will need to be used to find `rust-lld`
 - **[wg-cargo-std-aware#50]: Impact on build scripts that invoke rustc**, [jdm], Oct 2019
   - Need to make sure that build scripts that invoke rustc are able to do this with the correct
@@ -3093,6 +3097,7 @@ general feature for Cargo that could then apply to build-std too:
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [sgx]: https://github.com/apache/incubator-teaclave-sgx-sdk
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
+[std-unsupported]: https://github.com/rust-lang/rust/blob/f768dc01da9a681716724418ccf64ce55bd396c5/library/std/src/sys/pal/mod.rs#L68-L69
 [target-tier-policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
 
 [cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html
@@ -3167,10 +3172,12 @@ general feature for Cargo that could then apply to build-std too:
 [jamesmunns]: https://github.com/jamesmunns
 [japaric]: https://github.com/japaric
 [jdm]: https://github.com/jdm
+[joshtriplett]: https://github.com/joshtriplett
 [jschwe]: https://github.com/jschwe
 [jyn514]: https://github.com/jyn514
 [ketsuban]: https://github.com/ketsuban
 [madsmtm]: https://github.com/madsmtm
+[mati865]: https://github.com/mati865
 [mkb2091]: https://github.com/mkb2091
 [nagisa]: https://github.com/nagisa
 [nazar-pc]: https://github.com/nazar-pc
@@ -3186,4 +3193,5 @@ general feature for Cargo that could then apply to build-std too:
 [vi]: https://github.com/vi
 [wcampbell0x2a]: https://github.com/wcampbell0x2a
 [weihanglo]: https://github.com/weihanglo
+[wesleywiser]: https://github.com/wesleywiser
 [yogh333]: https://github.com/yogh333
