@@ -6,11 +6,27 @@
 # Summary
 [summary]: #summary
 
-> One paragraph explanation of the feature.
+While Rust's pre-built standard library has proven itself sufficient for the
+majority of Rust uses, there are a handful of use cases that are not well
+supported:
 
-**TODO:** after context sections accepted
+1. Rebuilding the standard library to match the user's profile
+2. Rebuilding the standard library with ABI-modifying flags
+3. Building the standard library for tier three targets
 
-## Scope
+This RFC proposes a handful of changes to Cargo, the compiler and standard
+library with the goal of defining a minimal build-std that has the potential of
+being stabilised:
+
+- Retiring `#![no_std]`
+- Explicit support for the standard library in target specs
+- Explicit and implicit dependencies on the standard library in `Cargo.toml`
+- Re-building the standard library when the profile or target modifiers change
+
+This RFC is co-authored by [David Wood][davidtwco] and
+[Adam Gemmell][adamgemmell].
+
+### Scope
 [scope]: #scope
 
 build-std, as proposed by this RFC, has many restrictions and limitations that
@@ -22,15 +38,14 @@ restrictions and enable build-std to support more use cases, without those
 proposals having to survey the ten+ years of issues, pull requests and
 discussion that this RFC has.
 
-## Acknowledgements
+### Acknowledgements
 [acknowledgements]: #acknowledgements
 
 This RFC would not have been possible without the advice, feedback and support
 of [Josh Triplett][joshtriplett], [Eric Huss][ehuss] and
 [Wesley Wiser][wesleywiser]. Thanks to [mati865][mati865] for advising on some
-of the specifics related to special object files.
-
-adam, ed (for opaque)
+of the specifics related to special object files and to [Ed Page][epage] for
+writing about opaque dependencies.
 
 # Terminology
 [terminology]: #terminology
@@ -342,22 +357,13 @@ follow-up RFCs:
 > provide an example-driven introduction to the policy, and explain its impact
 > in concrete terms.
 
-**TODO:** after context sections accepted
+**TODO:** write user-facing documentation once we're happy with reference-level
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-> This is the technical portion of the RFC. Explain the design in sufficient
-> detail that:
->
-> - Its interaction with other features is clear.
-> - It is reasonably clear how the feature would be implemented.
-> - Corner cases are dissected by example.
-> 
-> The section should return to the examples given in the previous section, and
-> explain more fully how the detailed proposal makes those examples work.
-
-**TODO:** after context sections accepted
+This section describes the various changes proposed by this RFC that build-std
+would be comprised of.
 
 ## Support of the standard library for a target
 [support-of-the-standard-library-for-a-target]: #support-of-the-standard-library-for-a-target
@@ -478,8 +484,8 @@ edition = "2024"
 std = { builtin = true, optional = true }
 ```
 
-On stable toolchains, it is not permitted to patch the standard library
-dependencies:
+It is only permitted to patch the standard library dependencies with a `path`.
+These will not be able to be published to crates.io.
 
 ```toml
 [package]
@@ -492,6 +498,9 @@ std = { builtin = true }
 
 [patch.builtin] # not permitted
 std = { .. }
+
+[patch.builtin] # permitted
+std = { path = "../libstd" }
 ```
 
 It also is not possible to perform source replacement on standard library
@@ -610,12 +619,6 @@ standard library depending on the value of the `build-std` key:
 - If `build-std = "always"`, then the pre-built standard library will be used
   only if it has an identical configuration to the current profile.
 
-**TODO:** how does it know if the profile matches and what about profile overrides
-**TODO:** compiler builtins' codegen-units
-**TODO:** which dependencies of std are built, what about proc_macro, libtest, etc. is it the sysroot crate? etc.?
-**TODO:** libunwind is in self-contained, does it need to be in a not rust-std component?
-**TODO:** breakage on non-std targets?
-
 When the pre-built standard library is not used or available, Cargo will build
 and use the standard library from source with the requested profile. See
 [*Vendored `rust-src`*][vendored-rust-src] for how Cargo will get the sources of
@@ -627,10 +630,40 @@ cannot control compilation any of the dependencies of the three standard library
 crates individually. The lockfile included in `rust-src` will be used when
 resolving the standard library's dependencies.
 
+Cargo will assume that the pre-built standard library matches the default
+release profile. If the user changes the default release profile or builds with
+a different profile then depending on the value of `build-std` in the
+`.cargo/config`, this could trigger a rebuild. rustc will add a
+`--print target-modifiers` flag which will print all of the flags treated as
+target modifiers (e.g. one flag per line, like `-Zretpoline`). If changing a
+profile setting would result in one of these flags being emitted by Cargo, then
+it is known that a target modifier has changed and would no longer match the
+pre-built standard library.
+
+Standard library crates will be built using the configuration of the current
+profile defined in the standard library's workspace. For example, if building in
+the release profile, the release profile of the standard library workspace will
+be used. If the profile of the user's crate sets a configuration option, that
+will be merged with the standard library's profile (e.g. if the user sets
+`profile.release opt-level` that will override the standard library's release
+`opt-level`, or if the user sets `profile.release.rustflags` that will be
+appended to the standard library's release `rustflags`).
+
+Profile overrides in the standard library's workspace continue to apply to its
+dependencies. User profile overrides can only apply to the `std`, `alloc` and
+`core` crates. This will ensure that compiler-builtins' profile overrides
+continue to apply and the crate will be built with a large number of codegen
+units to force each intrinsic into its own CGU and be deduplicated with
+`libgcc`.
+
 The standard library will always be a non-incremental build, with no `depinfo`
 produced, and only a `rlib` produced (no `dylib`). It will be built into the
 `target` directory of the crate or workspace like any other dependency and
 passed with `--extern noprelude:` to rustc.
+
+When `std` is a dependency, all of the dependencies of the `sysroot` crate will
+be built, ensuring that `proc_macro`, `test` and `profiler_builtins` are also
+built.
 
 Standard library artifacts build by built-std will not be shared between crates
 or workspaces, as they only exist in the `target` directory of a specific crate
@@ -638,6 +671,24 @@ or workspace.
 
 The host pre-built standard library will always be used for procedural macros and
 build scripts.
+
+Artifact dependencies use the same standard library as the rest of the crate
+(pre-built or newly-built, as appropriate).
+
+When building an existing `no_std` project for a tier three target with
+build-std, there could be an implicit dependency on the standard library from a
+`no_std` crate that has not yet made its dependency on `core` only explicit, for
+example. In this circumstance, this would fail as the target will have had
+`standard_library_support.std = false` in its target specification and Cargo
+will refuse to build `std` (see
+[*Support of the standard library for a target*][support-of-the-standard-library-for-a-target]).
+As this use case would previously have been using the unstable
+`-Zbuild-std=core`, this user must be on a nightly toolchain. This proposal
+argues that this breakage is unfortunate but acceptable, as it does not impact
+users on a stable toolchain, and once the `no_std` ecosystem has updated its
+dependencies on the standard library, these users will no longer need to rely on
+any nightly features to build the standard library (if this iteration of
+build-std is eventually stabilised).
 
 ### Vendored `rust-src`
 [vendored-rust-src]: #vendored-rust-src
@@ -745,9 +796,6 @@ rustc's sanitizer support attempts to locate sanitizer runtimes in the sysroot
 sanitizer runtimes for targets that support sanitizers, so all that is necessary
 is to be able to rebuild the standard library crates, which build-std enables.
 
-### Profiling
-[profiling]: #profiling
-
 ## Cargo subcommands
 [cargo-subcommands]: #cargo-subcommands
 
@@ -805,9 +853,15 @@ rust-version: 1.86.0
 documentation: https://doc.rust-lang.org/1.86.0/core/index.html
 ```
 
-**TODO:** [`cargo metadata`][cargo-metadata]
+[`cargo metadata`][cargo-metadata] will emit `std`, `alloc` and `core`
+dependencies to the metadata emitted by `cargo metadata` (when those crates are
+dependencies). None of the standard library's dependencies will be included.
+`source` would be set to `builtin` and the remaining fields would be set like
+any other dependency.
 
-**TODO:** [`cargo miri`][cargo-miri] can 
+[`cargo miri`][cargo-miri] could be re-implemented using build-std to enable a
+`miri` profile and always rebuild. The `miri` profile would be configured in the
+standard library's workspace, setting the flags/options necessary for `miri`.
 
 [`cargo pkgid`][cargo-pkgid] when passed `-p core` would print `builtin#core` as
 the source, likewise with `alloc` and `std`.
@@ -898,9 +952,6 @@ build-std has no implications for the following Cargo subcommands:
 - [`cargo version`][cargo-version]
 - [`cargo yank`][cargo-yank]
 
-## Artifact dependencies
-[artifact-dependencies]: #artifact-dependencies
-
 ## Public and private dependencies
 [public-and-private-dependencies]: #public-and-private-dependencies
 
@@ -930,18 +981,12 @@ edition = "2024"
 std = { builtin = true, public = true }
 ```
 
-## `rustc_inherit_overflow_checks`
-[rustc_inherit_overflow_checks]: #rustc_inherit_overflow_checks
-
-## Testing
-[testing]: #testing
-
 # Drawbacks
 [drawbacks]: #drawbacks
 
 > Why should we *not* do this?
 
-**TODO:** after context sections accepted
+**TODO:** write this
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -2477,6 +2522,10 @@ These issues document open design questions for build-std:
     library doesn't have `html_root_url` set, so local documentation doesn't get links to
     the standard library
     - Bootstrap passes `-Zcrate-attr="doc(html_root_url=..)"`
+- **[cargo#12375]: artifact-dependencies doesn't compose well with build-std**, [tamird], Jul 2023
+  - The current unstable implementation of build-std is required when building
+    for tier three targets but it is impossible to enable it for an artifact
+    dependency.
 - **[wg-cargo-std-aware#90]: restricted_std applicability to custom JSON targets**, [Mark-Simulacrum], Feb 2024
   - The standard library's `build.rs` changed to use `TARGET_OS` rather than an complete
     target name so JSON targets don't end up enabling `restricted_std`
@@ -2911,6 +2960,7 @@ general feature for Cargo that could then apply to build-std too:
 [cargo#10330]: https://github.com/rust-lang/cargo/pull/10330
 [cargo#10881]: https://github.com/rust-lang/cargo/issues/10881
 [cargo#12088]: https://github.com/rust-lang/cargo/pull/12088
+[cargo#12375]: https://github.com/rust-lang/cargo/pull/12375
 [cargo#13065]: https://github.com/rust-lang/cargo/pull/13065
 [cargo#13404]: https://github.com/rust-lang/cargo/pull/13404
 [cargo#13916]: https://github.com/rust-lang/cargo/pull/13916
@@ -3141,6 +3191,7 @@ general feature for Cargo that could then apply to build-std too:
 
 [12101111]: https://github.com/12101111
 [AZMCode]: https://github.com/AZMCode
+[davidtwco]: https://github.com/davidtwco
 [Dirbaio]: https://github.com/Dirbaio
 [Ericson2314]: https://github.com/Ericson2314
 [Gankra]: https://github.com/Gankra
