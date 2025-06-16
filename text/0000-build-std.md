@@ -630,8 +630,37 @@ the standard library.
 Inspired by the concept of [opaque dependencies][Opaque dependencies], the
 dependencies of the standard library crates are entirely opaque to the user, who
 cannot control compilation any of the dependencies of the three standard library
-crates individually. The lockfile included in `rust-src` will be used when
-resolving the standard library's dependencies.
+crates individually.
+
+The lockfile included in `rust-src` will be used when resolving the standard
+library's dependencies.
+
+The standard library will always be a non-incremental build, with no `depinfo`
+produced, and only a `rlib` produced (no `dylib`). It will be built into the
+`target` directory of the crate or workspace like any other dependency and
+passed with `--extern noprelude:` to rustc.
+
+When `std` is a dependency, all of the dependencies of the `sysroot` crate will
+be built, ensuring that `proc_macro`, `test` and `profiler_builtins` are also
+built.
+
+The host pre-built standard library will always be used for procedural macros and
+build scripts.
+
+Artifact dependencies use the same standard library as the rest of the crate
+(pre-built or newly-built, as appropriate).
+
+*See the following sections for rationale/alternatives:*
+- [*Why default to assuming the pre-built standard library is the release profile? *][why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]
+- [*Why respect the profile of the standard library workspace?*][why-respect-the-profile-of-the-standard-library-workspace]
+- [*Why merge the user's profile and the standard library workspace's profile?*][why-merge-the-users-profile-and-the-standard-library-workspaces-profile]
+- [*Why not allow profile overrides to override the standard library's dependencies?*][why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies]
+- [*Why not build the standard library in incremental?*][why-not-build-the-standard-library-in-incremental]
+- [*Why not produce a `dylib` for the standard library?*][why-not-produce-a-dylib-for-the-standard-library]
+- [*Why also build `proc_macro`, `test` and `profiler_builtins`?*][why-also-build-proc_macro-test-and-profiler_builtins]
+
+### Profiles
+[profiles]: #profiles
 
 Cargo will assume that the pre-built standard library matches the default
 release profile. If the user changes the default release profile or builds with
@@ -659,39 +688,7 @@ continue to apply and the crate will be built with a large number of codegen
 units to force each intrinsic into its own CGU and be deduplicated with
 `libgcc`.
 
-The standard library will always be a non-incremental build, with no `depinfo`
-produced, and only a `rlib` produced (no `dylib`). It will be built into the
-`target` directory of the crate or workspace like any other dependency and
-passed with `--extern noprelude:` to rustc.
-
-When `std` is a dependency, all of the dependencies of the `sysroot` crate will
-be built, ensuring that `proc_macro`, `test` and `profiler_builtins` are also
-built.
-
-Standard library artifacts build by built-std will not be shared between crates
-or workspaces, as they only exist in the `target` directory of a specific crate
-or workspace.
-
-The host pre-built standard library will always be used for procedural macros and
-build scripts.
-
-Artifact dependencies use the same standard library as the rest of the crate
-(pre-built or newly-built, as appropriate).
-
-When building an existing `no_std` project for a tier three target with
-build-std, there could be an implicit dependency on the standard library from a
-`no_std` crate that has not yet made its dependency on `core` only explicit, for
-example. In this circumstance, this would fail as the target will have had
-`standard_library_support.std = false` in its target specification and Cargo
-will refuse to build `std` (see
-[*Support of the standard library for a target*][support-of-the-standard-library-for-a-target]).
-As this use case would previously have been using the unstable
-`-Zbuild-std=core`, this user must be on a nightly toolchain. This proposal
-argues that this breakage is unfortunate but acceptable, as it does not impact
-users on a stable toolchain, and once the `no_std` ecosystem has updated its
-dependencies on the standard library, these users will no longer need to rely on
-any nightly features to build the standard library (if this iteration of
-build-std is eventually stabilised).
+**TODO:** discuss moving config into profile from bootstrap
 
 *See the following sections for rationale/alternatives:*
 - [*Why prevent rustc from loading root dependencies from the sysroot?*][why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]
@@ -700,15 +697,6 @@ build-std is eventually stabilised).
 - [*Why not always rebuild when the profile changes?*][why-not-always-rebuild-when-the-profile-changes]
 - [*Why not ship a debug profile `rust-std`?*][why-not-ship-a-debug-profile-rust-std]
 - [*Why use the lockfile of the `rust-src` component?*][why-use-the-lockfile-of-the-rust-src-component]
-- [*Why default to assuming the pre-built standard library is the release profile? *][why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]
-- [*Why respect the profile of the standard library workspace?*][why-respect-the-profile-of-the-standard-library-workspace]
-- [*Why merge the user's profile and the standard library workspace's profile?*][why-merge-the-users-profile-and-the-standard-library-workspaces-profile]
-- [*Why not allow profile overrides to override the standard library's dependencies?*][why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies]
-- [*Why not build the standard library in incremental?*][why-not-build-the-standard-library-in-incremental]
-- [*Why not produce a `dylib` for the standard library?*][why-not-produce-a-dylib-for-the-standard-library]
-- [*Why also build `proc_macro`, `test` and `profiler_builtins`?*][why-also-build-proc_macro-test-and-profiler_builtins]
-- [*Why not globally cache builds of the standard library?*][why-not-globally-cache-builds-of-the-standard-library]
-- [*Why permit breakage of nightly build-std users using tier three targets?*][why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets]
 
 ### Vendored `rust-src`
 [vendored-rust-src]: #vendored-rust-src
@@ -808,6 +796,30 @@ As long as these components have been downloaded, as well as any other support
 components, such as `rust-mingw`, rustc's `-Clink-self-contained` will be able
 to link against the object files and build-std should never fail on account of
 missing special object files.
+
+### Potential migration breakage
+[potential-migration-breakage]: #potential-migration-breakage
+
+When building an existing `no_std` project for a tier three target with
+build-std, there could be an implicit dependency on the standard library from a
+`no_std` crate that has not yet made its dependency on `core` only explicit, for
+example. In this circumstance, this would fail as the target will have had
+`standard_library_support.std = false` in its target specification and Cargo
+will refuse to build `std` (see
+[*Support of the standard library for a target*][support-of-the-standard-library-for-a-target]).
+
+*See the following sections for rationale/alternatives:*
+- [*Why permit breakage of nightly build-std users using tier three targets?*][why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets]
+
+### Caching
+[caching]: #caching
+
+Standard library artifacts build by built-std will not be shared between crates
+or workspaces, as they only exist in the `target` directory of a specific crate
+or workspace.
+
+*See the following sections for rationale/alternatives:*
+- [*Why not globally cache builds of the standard library?*][why-not-globally-cache-builds-of-the-standard-library]
 
 ### Sanitisers
 [sanitisers]: #sanitisers
@@ -1166,6 +1178,14 @@ the standard library.
 
 ## Why permit breakage of nightly build-std users using tier three targets?
 [why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets]: #why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets
+
+As this use case would previously have been using the unstable
+`-Zbuild-std=core`, this user must be on a nightly toolchain. This proposal
+argues that this breakage is unfortunate but acceptable, as it does not impact
+users on a stable toolchain, and once the `no_std` ecosystem has updated its
+dependencies on the standard library, these users will no longer need to rely on
+any nightly features to build the standard library (if this iteration of
+build-std is eventually stabilised).
 
 ## Why not check if `rust-src` has been modified?
 [why-not-check-if-rust-src-has-been-modified]: #why-not-check-if-rust-src-has-been-modified
