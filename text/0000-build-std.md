@@ -299,14 +299,14 @@ This RFC aims to support the following use cases:
 1. **Building standard library crates that are not shipped for a target**
   - Targets which have limited `std` support may wish to use the subsets of the
     standard library which do work
-2. **Using the standard library with tier three targets**
+1. **Using the standard library with tier three targets**
   - There is no stable mechanism for using the standard library on a tier three
     target that does not ship a pre-built std
   - While it is common for these targets to not support the standard library,
     they should be able to use `core`
   - These users are forced to use nightly and the unstable `-Zbuild-std`
     feature or third-party tools like [cargo-xbuild] (formerly [xargo])
-3. **Using miri on a stable toolchain**
+1. **Using miri on a stable toolchain**
   - Using miri requires building the standard library with specific compiler flags
     that would not be appropriate for the pre-built standard library, so is forced
     to require nightly and build its own sysroot
