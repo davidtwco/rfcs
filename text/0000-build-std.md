@@ -646,7 +646,7 @@ produced, and only a `rlib` produced (no `dylib`). It will be built into the
 
 When `std` is a dependency, all of the dependencies of the `sysroot` crate will
 be built, ensuring that `proc_macro`, `test` and `profiler_builtins` are also
-built. Optional features of the standard library are not resolved.
+built. Optional dependencies of the standard library are not built.
 
 The host pre-built standard library will always be used for procedural macros
 and build scripts. At least initially, artifact dependencies use the same
@@ -659,6 +659,7 @@ appropriate).
 - [*Why merge the user's profile and the standard library workspace's profile?*][why-merge-the-users-profile-and-the-standard-library-workspaces-profile]
 - [*Why not allow profile overrides to override the standard library's dependencies?*][why-not-allow-profile-overrides-to-override-the-standard-librarys-dependencies]
 - [*Why not build the standard library in incremental?*][why-not-build-the-standard-library-in-incremental]
+- [*Why not build optional dependencies of the standard library?*][why-not-build-optional-dependencies-of-the-standard-library]
 - [*Why not produce a `dylib` for the standard library?*][why-not-produce-a-dylib-for-the-standard-library]
 - [*Why also build `proc_macro`, `test` and `profiler_builtins`?*][why-also-build-proc_macro-test-and-profiler_builtins]
 - [*Why rebuild the standard library automatically?*][why-rebuild-the-standard-library-automatically]
@@ -738,12 +739,6 @@ supported.
 
 ### Building the standard library on a stable toolchain
 [building-the-standard-library-on-a-stable-toolchain]: #building-the-standard-library-on-a-stable-toolchain
-
-Cargo needs to be able to build the standard library crates, which inherently
-require a nightly toolchain. It could set `RUSTC_BOOTSTRAP` internally to do
-this with a stable toolchain, however this need is shared with other projects
-like Rust for Linux that want to build an unmodified `core` crate with a stable
-toolchain.
 
 rustc will automatically assume `RUSTC_BOOTSTRAP` when the source path of the
 crate being compiled is within the same sysroot as the rustc binary being
@@ -1364,6 +1359,12 @@ See
 ## Why not build the standard library in incremental?
 [why-not-build-the-standard-library-in-incremental]: #why-not-build-the-standard-library-in-incremental
 
+As the standard library sources are never modified, incremental compilation
+would only add a compilation time overhead.
+
+## Why not build optional dependencies of the standard library?
+[why-not-build-optional-dependencies-of-the-standard-library]: #why-not-build-optional-dependencies-of-the-standard-library
+
 ## Why not produce a `dylib` for the standard library?
 [why-not-produce-a-dylib-for-the-standard-library]: #why-not-produce-a-dylib-for-the-standard-library
 
@@ -1407,19 +1408,37 @@ Any crate that depends on `rust-src` having been modified would not be usable
 when published to crates.io as the required modifications will obviously not be
 included.
 
-## Why vendor standard library dependencies?
-[why-vendor-standard-library-dependencies]: #why-vendor-standard-library-dependencies
-
 ## Why not allow the source path for the standard library be customised?
 [why-not-allow-the-source-path-for-the-standard-library-be-customised]: #why-not-allow-the-source-path-for-the-standard-library-be-customised
+
+It is not a goal of this proposal to enable or improve the usability of custom
+or modified standard libraries.
 
 ## Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?
 [why-allow-building-from-the-sysroot-with-implied-rustc-bootstrap]: #why-allow-building-from-the-sysroot-with-implied-rustc_bootstrap
 
-**TODO**: explain RfL motivation and why not hardcode crate names instead, etc.
+Cargo needs to be able to build the standard library crates, which inherently
+require a nightly toolchain. It could set `RUSTC_BOOTSTRAP` internally to do
+this with a stable toolchain, however this is a shared requirement with other
+build systems that wish to build an unmodified standard library and want to work
+on stable toolchains.
+
+For example, Rust's project goal to enable Rust for Linux to build using only a
+stable toolchain would require that it be possible to build `core` without
+nightly.
+
+It is not sufficient for rustc to special-case the `core`, `alloc` and `std`
+crate names as when being built as part of the standard library, dependencies of
+the standard library also use unstable features and so these crate would also
+need such special-casing, which is not practical.
 
 ## Why default to public for the implicit standard library dependencies?
 [why-default-to-public-for-the-implicit-standard-library-dependencies]: #why-default-to-public-for-the-implicit-standard-library-dependencies
+
+There are crates building on stable which re-export from the standard library.
+If the implicit standard library dependency were not public then these crates
+would start to trigger the `exported_private_dependencies` lint when upgrading
+to a version of Cargo with an implicit standard library dependency.
 
 # Prior art
 [prior-art]: #prior-art
@@ -1667,7 +1686,7 @@ categories:
    when build-std did not use the on-disk `Cargo.lock`.
 
    [wg-cargo-std-aware#39] explores the interaction between build-std and
-   public/private dependencies ([rfcs#1977]). Should the standard library always
+   public/private dependencies ([rfcs#3516]). Should the standard library always
    be public? There were no solutions presented, only that if defined in
    `Cargo.toml`, the standard library will likely inherit the default from that.
 
@@ -3332,9 +3351,9 @@ general feature for Cargo that could then apply to build-std too:
 [rfcs#1133]: https://github.com/rust-lang/rfcs/pull/1133
 [rfcs#1502]: https://github.com/rust-lang/rfcs/pull/1502
 [rfcs#1868]: https://github.com/rust-lang/rfcs/pull/1868
-[rfcs#1977]: https://rust-lang.github.io/rfcs/1977-public-private-dependencies.html
 [rfcs#2663-t-lang]: https://github.com/rust-lang/lang-team/blob/master/minutes/2019-06-06.md?rgh-link-date=2019-06-06T23%3A20%3A17Z-
 [rfcs#2663]: https://github.com/rust-lang/rfcs/pull/2663
+[rfcs#3516]: https://rust-lang.github.io/rfcs/3516-public-private-dependencies.html
 [rfcs#3716]: https://rust-lang.github.io/rfcs/3716-target-modifiers.html
 [rust#107016]: https://github.com/rust-lang/rust/issues/107016
 [rust#108924]: https://github.com/rust-lang/rust/pull/108924
