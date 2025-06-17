@@ -488,6 +488,11 @@ default = ["std"]
 std = ["dep:std"]
 ```
 
+If there is an optional dependency on the standard library then there must be at
+least one non-optional dependency on the standard library (e.g. an optional
+`std` and non-optional `core` or `alloc`, or an optional `alloc` and
+non-optional `core`). `core` cannot be optional.
+
 On nightly toolchains, it is permitted to patch the standard library
 dependencies with `path` and `git` sources (or any other source). As with any
 other `path` or `git` dependency, crates with these dependency sources will not
@@ -549,46 +554,6 @@ std = { builtin = true, default-features = false } # not permitted
 *Enabling and disabling features on explicit standard library dependencies when
 using a stable toolchain is explored in
 [Future possibilities][future-possibilities].*
-
-### `compiler-builtins-mem`
-[compiler-builtins-mem]: #compiler-builtins-mem
-
-The `mem` feature of `compiler_builtins` (and the subsequent
-`compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
-`compiler_builtins/mem`) is required by `no_std` crates because `libc` is not
-providing these symbols without `std`.
-
-As of [compiler-builtins#411], the relevant symbols have weak linkage and do not
-need to be behind a feature flag so these features can be
-removed/enabled-by-default.
-
-### Replacing `#![no_std]` as a source-of-truth
-[replacing-no_std-as-a-source-of-truth]: #replacing-no_std-as-a-source-of-truth
-
-Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
-dependency on the standard library. With `Cargo.toml` being used to express a
-dependency on the standard library (or lack thereof), it is unintuitive for
-there to be two sources-of-truth for this information.
-
-`#![no_std]` serves two purposes - it stops the compiler from loading `std` from
-the sysroot and adding `extern crate std`, and it prevents the user from
-depending on anything from `std` accidentally.
-
-Two new lints will be added to the compiler - `std_use` and `alloc_use`.
-`std_use` will trigger if the crate refers to anything from the `std` crate, and
-`alloc_use` similarly for the `alloc` crate. Both lints are allow-by-default.
-
-`#![no_std]` will become an alias for `#![deny(std_use)]`. In the next edition,
-`#![no_std]` will be rewritten as `#![deny(std_use)]` and its use prohibited.
-
-rustc will always load the standard library, but if it is unused (which would be
-enforced by `#[deny(std_use)]`), then it will "forget" about the dependency.
-This is equivalent to the previous behaviour.
-
-**TODO**: double-check with petrochenkov that this is achievable
-
-*See the following sections for rationale/alternatives:*
-- [*Why replace `#![no_std]` with `#![deny(std_use)]`?*][why-replace-no_std-with-deny-std_use]
 
 ### `rustc_dep_of_std`
 [rustc_dep_of_std]: #rustc_dep_of_std
@@ -811,6 +776,20 @@ As long as these components have been downloaded, as well as any other support
 components, such as `rust-mingw`, rustc's `-Clink-self-contained` will be able
 to link against the object files and build-std should never fail on account of
 missing special object files.
+
+### `compiler-builtins-mem`
+[compiler-builtins-mem]: #compiler-builtins-mem
+
+The `mem` feature of `compiler_builtins` (and the subsequent
+`compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
+`compiler_builtins/mem`) is required by `no_std` crates because `libc` is not
+providing these symbols without `std`.
+
+It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
+`core` be enabled when `std` is not in the crate graph.
+
+*See the following sections for rationale/alternatives:*
+- [*Why not use weak linkage for `compiler-builtins/mem` symbols?*][why-not-use-weak-linkage-for-compiler-builtins-mem-symbols]
 
 ### Potential migration breakage
 [potential-migration-breakage]: #potential-migration-breakage
@@ -1203,6 +1182,18 @@ to find the standard library crates on crates.io and fail. This is not a
 build-std specific issue and is true of any RFC adding to what can be written in
 `Cargo.toml`.
 
+## Why not use weak linkage for `compiler-builtins/mem` symbols?
+[why-not-use-weak-linkage-for-compiler-builtins-mem-symbols]: #why-not-use-weak-linkage-for-compiler-builtinsmem-symbols
+
+Since [compiler-builtins#411], the relevant symbols in `compiler_builtins`
+already have weak linkage. However, it is nevertheless not possible to simply
+remove the `mem` feature and have the symbols always be present.
+
+Some targets, such as those based on MinGW, do not have sufficient support for
+weak definitions (at least with the default linker). Furthermore, weak linkage
+has precedence over shared libraries and the symbols of a dynamically-linked
+`libc` should be preferred over `compiler_builtins`'s symbols.
+
 ## Why permit patching of the standard library dependencies on nightly?
 [why-permit-patching-of-the-standard-library-dependencies-on-nightly]: #why-permit-patching-of-the-standard-library-dependencies-on-nightly
 
@@ -1215,9 +1206,6 @@ required for it to be used in replacing `rustc_dep_of_std`.
 
 ## Why limit enabling standard library features to nightly?
 [why-limit-enabling-standard-library-features-to-nightly]: #why-limit-enabling-standard-library-features-to-nightly
-
-## Why replace `#![no_std]` with `#![deny(std_use)]`?
-[why-replace-no_std-with-deny-std_use]:#why-replace-no_std-with-denystd_use
 
 ## Why prevent rustc from loading root dependencies from the sysroot?
 [why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]: #why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot
@@ -1439,6 +1427,26 @@ There are crates building on stable which re-export from the standard library.
 If the implicit standard library dependency were not public then these crates
 would start to trigger the `exported_private_dependencies` lint when upgrading
 to a version of Cargo with an implicit standard library dependency.
+
+## Why not replace `#![no_std]` as the source-of-truth for whether a crate depends on `std`?
+[why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std]: #why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std
+
+Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
+dependency on the standard library. With `Cargo.toml` being used to express a
+dependency on the standard library (or lack thereof), it is unintuitive for
+there to be two sources-of-truth for this information.
+
+`#![no_std]` serves two purposes - it stops the compiler from loading `std` from
+the sysroot and adding `extern crate std`, and it prevents the user from
+depending on anything from `std` accidentally.
+
+`#![no_std]` could hypothetically be replaced by a lint to prevent use of the
+standard library and a change to the compiler so that it loads the `std`
+speculatively unless it is used.
+
+However, while rustc does have some support for speculatively loading crates, it
+is not possible to do so and not declare them as a dependency in cross-crate
+metadata.
 
 # Prior art
 [prior-art]: #prior-art
