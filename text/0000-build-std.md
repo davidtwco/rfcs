@@ -272,6 +272,7 @@ This RFC aims to support the following use cases:
 
 1. **Re-building the standard library with different codegen flags or profile**
    ([wg-cargo-std-aware#2])
+
  - Embedded users need to optimise aggressively for size, due to the limited
    space available on their target platforms, which can be achieved in Cargo by
    setting `opt-level = s/z` and `panic = "abort"` in their profile. However,
@@ -284,7 +285,9 @@ This RFC aims to support the following use cases:
    compromising size and performance by setting `debuginfo=1`, this isn't
    ideal, and building the standard library with the dev profile would provide
    a better experience
-1. **Unblock stabilisation of ABI-modifying compiler flags**
+
+2. **Unblock stabilisation of ABI-modifying compiler flags**
+
   - Any compiler flags which change the ABI cannot currently be stabilised as they
     would immediately mismatch with the pre-built standard library
     - Without an ability to rebuild the standard library using these flags, it is
@@ -294,23 +297,30 @@ This RFC aims to support the following use cases:
     - Flags which need to be set across the entire crate graph to uphold some
       property (i.e. enhanced security) are also target modifiers
     - For example: sanitizers, control flow integriy, `-Zfixed-x18`, etc
-1. **Building the standard library on a stable toolchain without Cargo**
+
+3. **Building the standard library on a stable toolchain without Cargo**
+
   - While tangential to the core of build-std as a feature, projects like Rust
     for Linux want to be able to build an unmodified `core` from `rust-src` in
     the sysroot on a stable toolchain without Cargo
   - Cargo may also want a mechanism to build the standard library for build-std
     on a stable toolchain without relying on `RUSTC_BOOTSTRAP`
-1. **Building standard library crates that are not shipped for a target**
+
+4. **Building standard library crates that are not shipped for a target**
+
   - Targets which have limited `std` support may wish to use the subsets of the
     standard library which do work
-1. **Using the standard library with tier three targets**
+
+5. **Using the standard library with tier three targets**
+
   - There is no stable mechanism for using the standard library on a tier three
     target that does not ship a pre-built std
   - While it is common for these targets to not support the standard library,
     they should be able to use `core`
   - These users are forced to use nightly and the unstable `-Zbuild-std`
     feature or third-party tools like [cargo-xbuild] (formerly [xargo])
-1. **Using miri on a stable toolchain**
+
+6. **Using miri on a stable toolchain**
   - Using miri requires building the standard library with specific compiler flags
     that would not be appropriate for the pre-built standard library, so is forced
     to require nightly and build its own sysroot
@@ -319,16 +329,21 @@ The following use cases are not supported by this RFC, but could be supported wi
 follow-up RFCs:
 
 1. **Using the standard library with custom targets**
+
   - There is no stable mechanism for using the standard library for a custom
     target (using target-spec-json)
   - Like tier three targets, these targets often only support `core` and are
     forced to use nightly today
-1. **Enabling Cargo features for the standard library** ([wg-cargo-std-aware#4])
+
+2. **Enabling Cargo features for the standard library** ([wg-cargo-std-aware#4])
+
   - There are opportunities to expose Cargo features from the standard library that
     would be useful for certain subsets of the Rust users.
     - For example, embedded users may want to enable a feature like `optimize_for_size` or
       `panic_immediate_abort` to reduce binary size
-1. **Modifying the source code of the standard library** ([wg-cargo-std-aware#7])
+
+3. **Modifying the source code of the standard library** ([wg-cargo-std-aware#7])
+
   - Some platforms require a heavily modified standard library that would not
     be suitable for upstreaming, such as [Apache's SGX SDK][sgx] which replaces
     some standard library and ecosystem crates with forks or custom crates for a
@@ -412,6 +427,7 @@ The existing `restricted_std` mechanism will be removed from the standard
 library's [`build.rs`][std-build.rs] as it is replaced by this mechanism.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Should target specifications own knowledge of which standard library crates are supported?*][should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported]
 - [*Why replace `restricted_std` with explicit standard library support for a target?*][why-replace-restricted_std-with-explicit-standard-library-support-for-a-target]
 
@@ -428,6 +444,7 @@ or by checking if a file exists at the path matching the provided target name.
 Custom targets can still be used with build-std on nightly toolchains.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why disallow custom targets?*][why-disallow-custom-targets]
 
 *Allowing build-std with custom targets on stable toolchains is explored in
@@ -528,6 +545,7 @@ Implicit and explicit standard library dependencies are not added to
 `Cargo.lock`.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][why-explicitly-declare-dependencies-on-the-standard-library-in-cargo-toml]
 - [*Why disallow explicit builtin dependencies on other crates?*][why-disallow-explicit-builtin-dependencies-on-other-crates]
 - [*Why not add standard library dependencies to Cargo.lock?*][why-not-add-standard-library-dependencies-to-cargo-lock]
@@ -553,6 +571,7 @@ std = { builtin = true, default-features = false } # not permitted
 ```
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why limit enabling standard library features to nightly?*][why-limit-enabling-standard-library-features-to-nightly]
 
 *Enabling and disabling features on explicit standard library dependencies when
@@ -623,6 +642,7 @@ standard library as the rest of the crate (pre-built or newly-built, as
 appropriate).
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why default to assuming the pre-built standard library is the release profile?*][why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]
 - [*Why respect the profile of the standard library workspace?*][why-respect-the-profile-of-the-standard-library-workspace]
 - [*Why merge the user's profile and the standard library workspace's profile?*][why-merge-the-users-profile-and-the-standard-library-workspaces-profile]
@@ -682,6 +702,7 @@ All Cargo dependencies are provided to the compiler using the
 dependencies.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why prevent rustc from loading root dependencies from the sysroot?*][why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]
 - [*Why use `noprelude` with `--extern`?*][why-use-noprelude-with-extern]
 
@@ -695,14 +716,15 @@ are not found, Cargo will emit an error and recommend the user download
 `rust-src` if using rustup.
 
 `rust-src` will contain the sources for the standard library crates as well as
-its vendored dependencies. Sources of standard library dependencies will never
-be fetched from crates.io.
+its vendored dependencies. Sources of standard library dependencies will not be
+fetched from crates.io.
 
 Cargo will not perform any checks to ensure that the sources in `rust-src` have
 been modified. It will be documented that modifying these sources is not
 supported.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why not check if `rust-src` has been modified?*][why-not-check-if-rust-src-has-been-modified]
 - [*Why vendor standard library dependencies?*][why-vendor-the-standard-librarys-dependencies]
 - [*Why not allow the source path for the standard library be customised?*][why-not-allow-the-source-path-for-the-standard-library-be-customised]
@@ -716,6 +738,7 @@ invoked. Cargo will not need to use `RUSTC_BOOTSTRAP` when compiling the
 standard library with a stable toolchain.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?*][why-allow-building-from-the-sysroot-with-implied-rustc-bootstrap]
 
 ### Panic strategies
@@ -794,6 +817,7 @@ It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
 `core` be enabled when `std` is not in the crate graph.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why not use weak linkage for `compiler-builtins/mem` symbols?*][why-not-use-weak-linkage-for-compiler-builtins-mem-symbols]
 
 ### Potential migration breakage
@@ -808,6 +832,7 @@ specification and Cargo will refuse to build `std` (see
 [*Support of the standard library for a target*][support-of-the-standard-library-for-a-target]).
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why permit breakage of nightly build-std users using tier three targets?*][why-permit-breakage-of-nightly-build-std-users-using-tier-three-targets]
 
 ### Caching
@@ -818,6 +843,7 @@ or workspaces, as they only exist in the `target` directory of a specific crate
 or workspace.
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why not globally cache builds of the standard library?*][why-not-globally-cache-builds-of-the-standard-library]
 
 ### Sanitizers
@@ -1492,45 +1518,43 @@ of [cargo#4959].
 ## [xargo] and [cargo#4959] (2016)
 [xargo-and-cargo-4959-2016]: #xargo-and-cargo4959-2016
 
-While the discussions around [rfcs#1133] where ongoing, [xargo] was released
-in 2016. Xargo is a Cargo wrapper that builds a sysroot with a customised standard
+While the discussions around [rfcs#1133] where ongoing, [xargo] was released in
+2016. Xargo is a Cargo wrapper that builds a sysroot with a customised standard
 library and then uses that with regular Cargo operations (i.e. `xargo build`
 performs the same operation as `cargo build` but with a customised standard
-library). Configuration for the customised standard library was configured
-in the `Xargo.toml`, supporting configuring codegen flags, profile settings,
-Cargo features and multi-stage builds. It required nightly to build the
-standard library as it did not use `RUSTC_BOOTSTRAP`. Xargo had inherent
-limitations due to being a Cargo wrapper, leading to suggestions that its
-functionality be integrated into Cargo.
+library). Configuration for the customised standard library was configured in
+the `Xargo.toml`, supporting configuring codegen flags, profile settings, Cargo
+features and multi-stage builds. It required nightly to build the standard
+library as it did not use `RUSTC_BOOTSTRAP`. Xargo had inherent limitations due
+to being a Cargo wrapper, leading to suggestions that its functionality be
+integrated into Cargo.
 
 [cargo#4959] is a proposal inspired by [xargo], suggesting that a `[sysroot]`
 section be added to `.cargo/config` which would enable similar configuration to
-that of `Xargo.toml`. If this configuration is set, Cargo would build and use
-a sysroot with a customised standard library according to the configuration
+that of `Xargo.toml`. If this configuration is set, Cargo would build and use a
+sysroot with a customised standard library according to the configuration
 specified and the release profile. This sysroot would be rebuilt whenever
-relevant configuration changes (e.g. profiles). [cargo#4959] received
-varied feedback: the proposed syntax was not sufficiently user-friendly; it
-did not enable the user to customise the standard library implementation;
-and that exposing bootstrap stages was brittle and user-unfriendly.
-[cargo#4959] wasn't updated after submission so ultimately stalled and remains
-open.
+relevant configuration changes (e.g. profiles). [cargo#4959] received varied
+feedback: the proposed syntax was not sufficiently user-friendly; it did not
+enable the user to customise the standard library implementation; and that
+exposing bootstrap stages was brittle and user-unfriendly. [cargo#4959] wasn't
+updated after submission so ultimately stalled and remains open.
 
-[rfcs#1133] and [cargo#4959] took very different approaches to build-std,
-with [cargo#4959] proposing a simpler approach that exposed the necessary
-low-level machinery to users and [rfcs#1133] attempting to take a more
-first-class and user-friendly approach that has many tricky design
-implications.
+[rfcs#1133] and [cargo#4959] took very different approaches to build-std, with
+[cargo#4959] proposing a simpler approach that exposed the necessary low-level
+machinery to users and [rfcs#1133] attempting to take a more first-class and
+user-friendly approach that has many tricky design implications.
 
 ## [rfcs#2663] (2019)
 [rfcs-2663-2019]: #rfcs2663-2019
 
 In 2019, [*rfcs#2663: `std` Aware Cargo*][rfcs#2663] was opened as the most
 recent RFC attempting to advance build-std. [rfcs#2663] shared many of the
-motivations of [rfcs#1133]: building the standard library for tier three
-and custom targets; customising the standard library with different Cargo
-features; and applying different codegen flags to the standard library. It
-did not concern itself with build-std's potential use in `rustbuild` or with
-abolishing the sysroot.
+motivations of [rfcs#1133]: building the standard library for tier three and
+custom targets; customising the standard library with different Cargo features;
+and applying different codegen flags to the standard library. It did not concern
+itself with build-std's potential use in `rustbuild` or with abolishing the
+sysroot.
 
 [rfcs#2663] was primarily concerned what functionality should be available to
 the user and what the user experience ought to be. It proposed that `core`,
@@ -1539,29 +1563,29 @@ standard library available through rustup. It would be automatically rebuilt on
 any target when the profile configuration was modified such that it no longer
 matched the pre-built standard library. If using nightly, the user could enable
 Cargo features and modify the source of the standard library. Standard library
-dependencies were implicit by default, as today, but would be written
-explicitly when enabling Cargo features. It also aimed to stabilise the
-target-spec-json format and allow "stable" Cargo features to be enabled on
-stable toolchains, and as such proposed the concept of stable and unstable
-Cargo features be introduced.
+dependencies were implicit by default, as today, but would be written explicitly
+when enabling Cargo features. It also aimed to stabilise the target-spec-json
+format and allow "stable" Cargo features to be enabled on stable toolchains, and
+as such proposed the concept of stable and unstable Cargo features be
+introduced.
 
 There was a lot of feedback on [rfcs#2663] which largely stemmed from it being
-very high-level, containing many large unresolved questions and details left
-for the implementors to work out. For example, it proposed that there be
-a concept of stable and unstable Cargo features but did not elaborate any further,
-leaving that as an implementation detail. Nevertheless, the proposal was valuable
-in more clearly elucidating a potential user experience that build-std could
-aim for, and the feedback provided was incorporated into the [wg-cargo-std-aware]
+very high-level, containing many large unresolved questions and details left for
+the implementors to work out. For example, it proposed that there be a concept
+of stable and unstable Cargo features but did not elaborate any further, leaving
+that as an implementation detail. Nevertheless, the proposal was valuable in
+more clearly elucidating a potential user experience that build-std could aim
+for, and the feedback provided was incorporated into the [wg-cargo-std-aware]
 effort, described below.
 
 ## [wg-cargo-std-aware] (2019-)
 [wg-cargo-std-aware-2019-]: #wg-cargo-std-aware-2019-
 
-[rfcs#2663] demonstrated that there was demand for a mechanism for being able
-to (re-)build the standard library, and the feedback showed that this was a
-thorny problem with lots of complexity, so in 2019, the [wg-cargo-std-aware]
-repository was created to organise related work and explore the issues involved
-in build-std.
+[rfcs#2663] demonstrated that there was demand for a mechanism for being able to
+(re-)build the standard library, and the feedback showed that this was a thorny
+problem with lots of complexity, so in 2019, the [wg-cargo-std-aware] repository
+was created to organise related work and explore the issues involved in
+build-std.
 
 [wg-cargo-std-aware] led to the current unstable implementation of `-Zbuild-std`
 in Cargo, which is described in detail in the [*Implementation summary*
@@ -1584,8 +1608,8 @@ categories:
      ([wg-cargo-std-aware#36])
 
    These are all either fairly self-explanatory, described in the summary of the
-   previous RFCs/proposals above, or in the [*Motivation*][motivation] section of
-   this RFC.
+   previous RFCs/proposals above, or in the [*Motivation*][motivation] section
+   of this RFC.
 
 2. **Support for build-std in Cargo's subcommands**
 
@@ -1600,28 +1624,30 @@ categories:
    standard library - which was implemented in [cargo#10129].
 
    The [`--build-plan` flag][wg-cargo-std-aware#45] does not support build-std and its
-   issue did not receive much discussion, but the future of this flag in its entirety
-   seems to be uncertain.
+   issue did not receive much discussion, but the future of this flag in its
+   entirety seems to be uncertain.
 
-   [`cargo vendor`][wg-cargo-std-aware#23] did receive lots of discussion. Vendoring
-   the standard library is desirable (for the same reasons as any vendoring), but would
-   lock the user to a specific version of the toolchain when using a vendored standard
-   library. However, if the `rust-src` component contained already-vendored dependencies,
-   then `cargo vendor` would not need to support build-std and users would see the same
-   advantages.
+   [`cargo vendor`][wg-cargo-std-aware#23] did receive lots of discussion.
+   Vendoring  the standard library is desirable (for the same reasons as any
+   vendoring), but would lock the user to a specific version of the toolchain
+   when using a vendored standard library. However, if the `rust-src` component
+   contained already-vendored dependencies, then `cargo vendor` would not need
+   to support build-std and users would see the same advantages.
 
-   Vendored standard library dependencies were implemented using a hacky approach
-   (necessarily, prior to the standard library having its own workspace), but this was
-   later reverted due to bugs. No attempt has been made to reimplement vendoring since
-   the standard library has had its own workspace.
+   Vendored standard library dependencies were implemented using a hacky
+   approach (necessarily, prior to the standard library having its own
+   workspace), but this was later reverted due to bugs. No attempt has been made
+   to reimplement vendoring since the standard library has had its own
+   workspace.
 
 3. **Dependencies of the standard library**
 
-   There are a handful of dependencies of the standard library that may pose challenges
-   for build-std by dint of needing a working C toolchain or special-casing.
+   There are a handful of dependencies of the standard library that may pose
+   challenges for build-std by dint of needing a working C toolchain or
+   special-casing.
 
-   [`libbacktrace`][wg-cargo-std-aware#16] previously required a C compiler to build
-   `backtrace-sys`, but now uses `gimli` internally.
+   [`libbacktrace`][wg-cargo-std-aware#16] previously required a C compiler to
+   build `backtrace-sys`, but now uses `gimli` internally.
 
    [`compiler_builtins`][wg-cargo-std-aware#15] has a `c` feature that uses C
    versions of some intrinsics that are more optimised. This is used by the
@@ -1632,26 +1658,28 @@ categories:
    symbols provided by `libc`. compiler-builtins is also built with a large
    number of compilation units to force each function into a different unit.
 
-   [Sanitizers][wg-cargo-std-aware#17], when enabled, require a sanitizer runtime
-   to be present. These are currently built by bootstrap and part of LLVM.
+   [Sanitizers][wg-cargo-std-aware#17], when enabled, require a sanitizer
+   runtime to be present. These are currently built by bootstrap and part of
+   LLVM.
 
 4. **Design considerations**
 
    There are many design considerations discussed in the [wg-cargo-std-aware]
    repository:
 
-   [wg-cargo-std-aware#5] explored how/if dependencies on the standard library should
-   be declared. The issue claims that users should have to opt-in to build-std, support
-   alternative standard library implementations, and that Cargo needs to be able to
-   pass `--extern` to rustc for all dependencies.
+   [wg-cargo-std-aware#5] explored how/if dependencies on the standard library
+   should be declared. The issue claims that users should have to opt-in to
+   build-std, support alternative standard library implementations, and that
+   Cargo needs to be able to pass `--extern` to rustc for all dependencies.
 
-   It is an open question how to handle multiple dependencies each declaring a dependency
-   on the standard library. A preference towards unifying standard library dependencies
-   was expressed (these would have no concept of a version, so just union all features).
+   It is an open question how to handle multiple dependencies each declaring a
+   dependency on the standard library. A preference towards unifying standard
+   library dependencies was expressed (these would have no concept of a version,
+   so just union all features).
 
-   There was no consensus on how to find a balance between explicitly depending on the
-   standard library versus implicitly, or on whether the pre-built-ness of a dependency
-   should be surfaced to the user.
+   There was no consensus on how to find a balance between explicitly depending
+   on the standard library versus implicitly, or on whether the pre-built-ness
+   of a dependency should be surfaced to the user.
 
    [wg-cargo-std-aware#6] argues that target-spec-json would be de-facto stable
    if it can be used by build-std on stable. While `--target=custom.json` can be
@@ -1660,36 +1688,38 @@ categories:
    would effectively be a greater commitment to the current stability of custom
    targets than currently exists and would warrant an explicit decision.
 
-   [wg-cargo-std-aware#8] highlighted that a more-portable standard library would
-   be beneficial for build-std (i.e. a `std` that could build on any target), but
-   that making the standard library more portable isn't necessarily in-scope for
-   build-std.
+   [wg-cargo-std-aware#8] highlighted that a more-portable standard library
+   would be beneficial for build-std (i.e. a `std` that could build on any
+   target), but that making the standard library more portable isn't necessarily
+   in-scope for build-std.
 
-   [wg-cargo-std-aware#11] investigated how build-std could get the standard library
-   sources. rustup can download `rust-src`, but there was a preference expressed that
-   rustup not be required. Cargo could have reasonable default probing locations that
-   could be used by distros and would include where rustup puts `rust-src`.
+   [wg-cargo-std-aware#11] investigated how build-std could get the standard
+   library sources. rustup can download `rust-src`, but there was a preference
+   expressed that rustup not be required. Cargo could have reasonable default
+   probing locations that could be used by distros and would include where
+   rustup puts `rust-src`.
 
-   [wg-cargo-std-aware#12] concluded that the `Cargo.lock` of the standard library
-   would need to be respected so that the project can guarantee that the standard
-   library works with the project's current testing.
+   [wg-cargo-std-aware#12] concluded that the `Cargo.lock` of the standard
+   library would need to be respected so that the project can guarantee that the
+   standard library works with the project's current testing.
 
-   [wg-cargo-std-aware#13] aimed to determine how to determine the default set of cfg
-   values for the standard library. This is currently determined by bootstrap. This
-   could be duplicated in Cargo in the short-term, made visible to build-std through
-   some configuration, or require the user to explicitly declare them.
+   [wg-cargo-std-aware#13] aimed to determine how to determine the default set
+   of cfg values for the standard library. This is currently determined by
+   bootstrap. This could be duplicated in Cargo in the short-term, made visible
+   to build-std through some configuration, or require the user to explicitly
+   declare them.
 
-   [wg-cargo-std-aware#14] looks into additional rustc flags and environment variables
-   passed by bootstrap to the compiler. A comparison of the compilation flags from
-   bootstrap and build-std was [posted in a comment][wg-cargo-std-aware#14-review].
+   [wg-cargo-std-aware#14] looks into additional rustc flags and environment
+   variables passed by bootstrap to the compiler. A comparison of the
+   compilation flags from bootstrap and build-std was [posted in a comment][wg-cargo-std-aware#14-review].
    No solutions were suggested, other than that it may need a similar mechanism
    as [wg-cargo-std-aware#13].
 
    [wg-cargo-std-aware#29] tries to determine how to support different panic
-   strategies. Should Cargo use the profile to decide what to use? How does it know
-   which panic strategy crate to use? It is argued that Cargo ought to work
-   transparently - if the user sets the panic strategy differently then a rebuild
-   is triggered.
+   strategies. Should Cargo use the profile to decide what to use? How does it
+   know which panic strategy crate to use? It is argued that Cargo ought to work
+   transparently - if the user sets the panic strategy differently then a
+   rebuild is triggered.
 
    [wg-cargo-std-aware#30] identifies that some targets have special handling in
    bootstrap which will need to be duplicated in build-std. Targets could be
@@ -1706,11 +1736,11 @@ categories:
 
    [wg-cargo-std-aware#43] investigates the options for the UX of build-std.
    `-Zbuild-std` flag is not a good experience as it needs added to every
-   invocation and has few extension points. Using build-std should be a
-   unstable feature at first. It was argued that build-std should be
-   transparent and happen automatically when Cargo determines it is necessary.
-   There are concerns that this could trigger too often and that it
-   should only happen automatically for ABI-modifying flags.
+   invocation and has few extension points. Using build-std should be a unstable
+   feature at first. It was argued that build-std should be transparent and
+   happen automatically when Cargo determines it is necessary. There are
+   concerns that this could trigger too often and that it should only happen
+   automatically for ABI-modifying flags.
 
    [wg-cargo-std-aware#46] observes that some targets link against special
    object flags (e.g. `crt1.o` on musl) and that build-std will need to handle
@@ -1731,14 +1761,15 @@ categories:
    need for this feature could be made redundant.
 
    [wg-cargo-std-aware#68] notices that `profiler_builtins` needs to be compiled
-   after `core` (i.e. `core` can't be compiled with profiling). The error message
-   has been improved for this but there was otherwise no commentary. This has changed
-   since the issue was filed, as `profiler_builtins` is now a `#![no_core]` crate.
+   after `core` (i.e. `core` can't be compiled with profiling). The error
+   message has been improved for this but there was otherwise no commentary.
+   This has changed since the issue was filed, as `profiler_builtins` is now a
+   `#![no_core]` crate.
 
    [wg-cargo-std-aware#85] considers that there has to be a deliberate testing
    strategy in place between the [rust-lang/rust] and [rust-lang/cargo]
-   repositories to ensure there is no breakage. `rust-toolstate` could be used but
-   is not very good. Alternatively, Cargo could become a [JOSH] subtree of
+   repositories to ensure there is no breakage. `rust-toolstate` could be used
+   but is not very good. Alternatively, Cargo could become a [JOSH] subtree of
    [rust-lang/rust].
 
    [wg-cargo-std-aware#86] proposes that the initial set of targets supported by
@@ -1748,42 +1779,43 @@ categories:
    [wg-cargo-std-aware#88] reports that `cargo doc -Zbuild-std` doesn't generate
    links to the standard library. Cargo doesn't think the standard library comes
    from crates.io, and bootstrap isn't involved to pass
-   `-Zcrate-attr="doc(html_root_url=..)"` like in the pre-built standard library.
+   `-Zcrate-attr="doc(html_root_url=..)"` like in the pre-built standard
+   library.
 
-   [wg-cargo-std-aware#90] asks how `restricted_std` should apply to custom targets.
-   `restricted_std` is triggered based on the `target_os` value, which means it
-   will apply for some custom targets but not others. build-std needs to determine
-   what guarantees are desirable/expected. Current implementation wants
-   slightly-modified-from-default target specs to be accepted and completely new
-   target specs to hit `restricted_std`.
+   [wg-cargo-std-aware#90] asks how `restricted_std` should apply to custom
+   targets. `restricted_std` is triggered based on the `target_os` value, which
+   means it will apply for some custom targets but not others. build-std needs
+   to determine what guarantees are desirable/expected. Current implementation
+   wants slightly-modified-from-default target specs to be accepted and
+   completely new target specs to hit `restricted_std`.
 
    [wg-cargo-std-aware#92] suggests that some targets could be made "unstable"
-   and as such only support build-std on nightly. This forces users of those targets
-   to use nightly where they will receive more frequent fixes for their target. It
-   would also permit more experimentation with build-std while enabling
-   stabilisation for mainstream targets.
+   and as such only support build-std on nightly. This forces users of those
+   targets to use nightly where they will receive more frequent fixes for their
+   target. It would also permit more experimentation with build-std while
+   enabling stabilisation for mainstream targets.
 
 5. **Implementation considerations**
-   These won't be discussed in this summary, see [the implementation
-   summary][implementation-summary] or [the relevant section of the literature review
-   for more detail][implementation]
+   These won't be discussed in this summary, see [the implementation summary][implementation-summary]
+   or [the relevant section of the literature review for more detail][implementation]
 
 6. **Bugs in the compiler or standard library**
-   These aren't especially relevant to this summary, see [the relevant section of the
-   literature review for more detail][bugs-in-the-compiler-or-standard-library]
+   These aren't especially relevant to this summary, see [the relevant section
+   of the literature review for more detail][bugs-in-the-compiler-or-standard-library]
 
 7. **Cargo feature requests narrowly applied to build-std**
-   These aren't especially relevant to this summary, see [the relevant section of the
-   literature review for more detail][cargo-feature-requests-narrowly-applied-to-build-std]
+   These aren't especially relevant to this summary, see [the relevant section
+   of the literature review for more detail][cargo-feature-requests-narrowly-applied-to-build-std]
 
-Since around 2020, activity in the [wg-cargo-std-aware] repository largely trailed off
-and there have not been any significant developments related to build-std since.
+Since around 2020, activity in the [wg-cargo-std-aware] repository largely
+trailed of and there have not been any significant developments related to
+build-std since.
 
 ### Implementation summary
 [implementation-summary]: #implementation-summary
 
-*An exhaustive review of implementation-related issues, pull requests and discussions
-can be found in [the relevant section of the literature review][implementation].*
+*An exhaustive review of implementation-related issues, pull requests and
+discussions can be found in [the relevant section of the literature review][implementation].*
 
 There has been an unstable and experimental implementation of build-std in Cargo
 since August 2019 ([wg-cargo-std-aware#10]/[cargo#7216]).
@@ -1887,21 +1919,23 @@ Cargo's subcommands including `metadata`, `clean`, `vendor`, `pkgid` and the
 ## Related work
 [related-work]: #related-work
 
-There are a variety of ongoing efforts, ideas, RFCs or draft notes describing features that
-are related or would be beneficial for build-std:
+There are a variety of ongoing efforts, ideas, RFCs or draft notes describing
+features that are related or would be beneficial for build-std:
 
 - **[Opaque dependencies]**, [epage], May 2025
-  - Introduces the concept of an opaque dependency that has its own `Cargo.lock`, `RUSTFLAGS`
-    and `profile`
-  - Opaque dependencies could enable a variety of build-time performance improvements:
-    - Caching - differences in dependency versions can cause unique instances of every dependent
-      crate
-    - Pre-built binaries - can leverage a pre-built artifact for a given opaque dependency
+  - Introduces the concept of an opaque dependency that has its own
+    `Cargo.lock`, `RUSTFLAGS` and `profile`
+  - Opaque dependencies could enable a variety of build-time performance
+      improvements:
+    - Caching - differences in dependency versions can cause unique instances of
+      every dependent crate
+    - Pre-built binaries - can leverage a pre-built artifact for a given opaque
+      dependency
       - e.g. the standard library's distributed `rlib`s
-    - MIR-only/cross-crate lazy compilation - Small dependencies could be built lazily and
-      larger dependencies built once
-    - Optimising dependencies - dependencies could always be optimised when they are
-      unlikely to be needed during debugging
+    - MIR-only/cross-crate lazy compilation - Small dependencies could be built
+      lazily and larger dependencies built once
+    - Optimising dependencies - dependencies could always be optimised when they
+      are unlikely to be needed during debugging
 
 ## Key differences
 [key-differences]: #key-differences
@@ -1920,7 +1954,8 @@ stabilisation and aren't pertinent to the overall design:
 - Bikeshed: What syntax is used to identify dependencies on the standard library
   in `Cargo.toml`?
   - e.g. `builtin = true`, `version = "*"` or something else
-- Bikeshed: What syntax is used to patch dependencies on the standard library in `Cargo.toml`?
+- Bikeshed: What syntax is used to patch dependencies on the standard library in
+  `Cargo.toml`?
   - e.g. `[patch.builtin]`?
 - Bikeshed: Where should the `build-std` configuration in `.cargo/config` be and
   what should it be called?
@@ -1939,7 +1974,8 @@ There are many possible follow-ups to build-std:
   - This would require a decision from the relevant teams on the exact stability
     guarantees of the target-spec-json format and whether any large changes to
     the format are desirable prior to broader use.
-- Relax restriction on enabling/disabling features of standard library dependencies
+- Relax restriction on enabling/disabling features of standard library
+    dependencies
   - This would require the library team be comfortable with the features
     declared on the standard library being part of the stable interface of the
     standard library
