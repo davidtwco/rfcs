@@ -184,8 +184,12 @@ often different depending on the target.
 [target-support-of-the-standard-library]: #target-support-of-the-standard-library
 
 The `std` crate's [`build.rs`][std-build.rs] checks for supported values of the
-`CARGO_CFG_TARGET_OS` environment variable. `CARGO_CFG_TARGET_OS` corresponds to
-the "os" part of a target triple, e.g. "linux" in "aarch64-unknown-linux-gnu".
+`CARGO_CFG_TARGET_*` environment variables. These variables are akin to the
+conditional compilation [configuration options][conditional-compilation-config-options],
+and often correspond to parts of the target triple (for example,
+`CARGO_CFG_TARGET_OS` corresponds to the "os" part of a target triple - "linux"
+in "aarch64-unknown-linux-gnu". This filtering is strict enough to distinguish
+between built-in targets but loose enough to match similar custom targets.
 
 When encountering an unknown or unsupported operating system then the
 `restricted_std` cfg is set. `restricted_std` marks the entire standard library
@@ -638,7 +642,7 @@ release profile. If the user changes the default release profile or builds with
 a different profile then depending on the value of `build-std` in the
 `.cargo/config`, this could trigger a rebuild. rustc will add a
 `--print target-modifiers` flag which will print all of the flags treated as
-target modifiers (e.g. one flag per line, like `-Zretpoline`). If changing a
+target modifiers, like `-Zretpoline`, with one flag per line. If changing a
 profile setting would result in one of these flags being emitted by Cargo, then
 a target modifier has changed and would no longer match the pre-built standard
 library.
@@ -653,12 +657,13 @@ will be merged with the standard library's profile (e.g. if the user sets
 appended to the standard library's release `rustflags`).
 
 Profile overrides in the standard library's workspace continue to apply to its
-dependencies. User profile overrides can only apply to the `std`, `alloc` and
-`core` crates. 
+dependencies. User profile overrides for specific crates can only apply to the
+`std`, `alloc` and `core` crates.
 
 **TODO:** discuss moving config into profile from bootstrap
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why not always rebuild when the profile changes?*][why-not-always-rebuild-when-the-profile-changes]
 - [*Why not ship a debug profile `rust-std`?*][why-not-ship-a-debug-profile-rust-std]
 - [*Why respect profile overrides of the standard library's workspace?*][why-respect-profile-overrides-of-the-standard-librarys-workspace]
@@ -827,7 +832,7 @@ instructive to examine how build-std would enable sanitizer support to ensure
 that the proposed design is compatible.
 
 rustc's flag to enable sanitizers will be a target modifier, as the
-instrumentation must be present for all of the crates to avoid false positives.
+instrumentation must be present for all of the crates to avoid false negatives.
 
 rustc's sanitizer support attempts to locate sanitizer runtimes in the sysroot
 (`$sysroot/lib/rustlib/$target/lib/`) to link against. Rust already ships
@@ -1129,10 +1134,11 @@ required:
   this would cause the build to fail.
 - rustc could support a `--print` value that would print whether the crate
   declares itself as `#![no_std]` crate, and based on this, Cargo could build
-  `std` or only `core`. Cargo would also need to know whether to build `alloc`
-  too, which checking for `#![no_std]` does not help with. Cargo could go
-  further and ask rustc whether a crate (or its dependencies) used `alloc`, but
-  this seems needlessly complicated.
+  `std` or only `core`. This would require asking `rustc` to parse crates'
+  sources while resolving dependencies, slowing build times. Cargo would also
+  need to know whether to build `alloc` too, which checking for `#![no_std]`
+  does not help with. Cargo could go further and ask rustc whether a crate (or
+  its dependencies) used `alloc`, but this seems needlessly complicated.
 
 Furthermore, supporting explicit dependencies on standard library crates enables
 use of other Cargo features that apply to dependencies in a natural and
@@ -1827,7 +1833,8 @@ crates. Some additional work is done to deduplicate crates across the graph and
 then this crate graph is used to drive work (usually `rustc` invocations) as
 usual. This approach allows for build-time parallelism and sharing of crates
 between the two separate resolves but does involve `build-std`-specific logic in
-and around unit generation.
+and around unit generation and is very unlike the rest of Cargo
+([wg-cargo-std-aware#64]).
 
 Resolving the standard library separately from the user's crate helps guarantee
 that the exact dependency versions of the pre-built standard library are used,
@@ -1942,6 +1949,10 @@ There are many possible follow-ups to build-std:
 - Add a `--print default-unwind-strategy` to rustc and use that to avoid
   building `panic_unwind` if the default is abort for any given target and
   `panic` is not set in the profile
+- Download standard library sources from `crates.io`
+  - This would make build-std easier for users who do not use `rustup`. It would
+    require Cargo to use `RUSTC_BOOTSTRAP` as the sources would not be found in
+    the sysroot
 
 # Appendix I: Exhaustive literature review
 [appendix-i]: #appendix-i-exhaustive-literature-review
@@ -3328,6 +3339,7 @@ general feature for Cargo that could then apply to build-std too:
 [cargo#14951]: https://github.com/rust-lang/cargo/pull/14951
 [cargo#15065]: https://github.com/rust-lang/cargo/pull/15065
 [cargo#2768]: https://github.com/rust-lang/cargo/pull/2768
+[cargo#3126]: https://github.com/rust-lang/cargo/issues/3126
 [cargo#4959]: https://github.com/rust-lang/cargo/issues/4959
 [cargo#5002]: https://github.com/rust-lang/cargo/issues/5002
 [cargo#5003]: https://github.com/rust-lang/cargo/issues/5003
@@ -3494,6 +3506,7 @@ general feature for Cargo that could then apply to build-std too:
 [bootstrap-sanitizers]: https://github.com/rust-lang/rust/blob/d13a431a6cc69cd65efe7c3eb7808251d6fd7a46/bootstrap.example.toml#L388
 [build-std-features]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std-features
 [build-std]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+[conditional-compilation-config-options]: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 [embed-rs-cargo-toml]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/Cargo.toml#L21
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [sgx]: https://github.com/apache/incubator-teaclave-sgx-sdk
