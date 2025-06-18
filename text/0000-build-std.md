@@ -163,7 +163,7 @@ dependencies:
   standard library
 - `compiler_builtins` has an optional `mem` feature that provides symbols
   for common memory routines (e.g. `memcpy`)
-  - It isn't used by when `std` is built as `libc` provides these routines,
+  - It isn't used when `std` is built as `libc` provides these routines,
     but is often used by `no_std` crates when there is not a system `libc`
 - To use sanitizers, the sanitizer runtimes from LLVM's compiler-rt need to
   be linked against. Building of these is enabled in `bootstrap.toml`
@@ -291,7 +291,7 @@ This RFC aims to support the following use cases:
   - Any compiler flags which change the ABI cannot currently be stabilised as they
     would immediately mismatch with the pre-built standard library
     - Without an ability to rebuild the standard library using these flags, it is
-      would be impossible to use them effectively and safely if stabilised
+      impossible to use them effectively and safely if stabilised
   - ABI-modifying flags are designated as target modifiers ([rfcs#3716]/[rust#136966])
     and require that the same value for the flag is passed to all compilation units
     - Flags which need to be set across the entire crate graph to uphold some
@@ -321,6 +321,7 @@ This RFC aims to support the following use cases:
     feature or third-party tools like [cargo-xbuild] (formerly [xargo])
 
 6. **Using miri on a stable toolchain**
+
   - Using miri requires building the standard library with specific compiler flags
     that would not be appropriate for the pre-built standard library, so is forced
     to require nightly and build its own sysroot
@@ -428,18 +429,21 @@ library's [`build.rs`][std-build.rs] as it is replaced by this mechanism.
 
 *See the following sections for rationale/alternatives:*
 
+- [*Why record support for `core`, `alloc` and `std` separately?*][why-record-support-for-core-alloc-and-std-seperately]]
 - [*Should target specifications own knowledge of which standard library crates are supported?*][should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported]
 - [*Why replace `restricted_std` with explicit standard library support for a target?*][why-replace-restricted_std-with-explicit-standard-library-support-for-a-target]
 
 ### Custom targets and target-spec-json
 [custom-targets-and-target-spec-json]: #custom-targets-and-target-spec-json
 
-Cargo will detect when a custom target is being used and
-to build any of the standard library crates and will emit an error.
+Cargo will detect when the standard library is to be built for a custom target
+and will emit an error.
 
-Cargo could detect use of a custom target either by comparing it with the list
-of built-in targets that rustc reports knowing about (via `--print target-list`)
-or by checking if a file exists at the path matching the provided target name.
+Cargo could detect use of a custom target either by checking if the value to
+`--target` is a valid path to a file ending in `.json`, checking it against the
+list of built-in targets that rustc reports knowing about (via
+`--print target-list`), checking for a file in `$RUST_TARGET_PATH/$target.json`
+or in the sysroot at `$sysroot/lib/rustlib/$target/target.json`.
 
 Custom targets can still be used with build-std on nightly toolchains.
 
@@ -486,11 +490,15 @@ set to `true` and cannot be combined with any other dependency source. `builtin`
 can only be used with crates named `core`, `alloc` or `std`. crates.io will
 accept crates published which have `builtin` dependencies.
 
+**TODO:** if std actually is sysroot, what if you want test w/out std or profiler_builtins w/out std
+
 *See [Unresolved questions][unresolved-questions] to bikeshed `builtin = true`.*
 
 Cargo already supports `path` and `git` dependencies for crates named `core`,
 `alloc` and `std` which continue to be supported and work as before. Multiple
 standard library crates can be added as dependencies.
+
+**TODO:** what if you have a `std = { path = "" }` and a `core = { builtin = true }` or similar
 
 Standard library dependencies can be marked as `optional` and be enabled
 conditionally by a feature in the crate:
@@ -528,10 +536,10 @@ edition = "2024"
 [dependencies]
 std = { builtin = true }
 
-[patch.builtin] # not permitted
+[patch.builtin] # permitted on nightly
 std = { .. }
 
-[patch.builtin] # permitted
+[patch.builtin] # permitted on nightly
 std = { path = "../libstd" }
 ```
 
@@ -539,10 +547,12 @@ std = { path = "../libstd" }
 `[patch.builtin]`.*
 
 It is not possible to perform source replacement on standard library
-dependencies.
+dependencies using `builtin = true`.
 
 Implicit and explicit standard library dependencies are not added to
 `Cargo.lock`.
+
+**TODO:** is this wrong? does it need to be in there if Cargo only reads the lockfile?
 
 *See the following sections for rationale/alternatives:*
 
@@ -592,12 +602,15 @@ library's workspace to point to the local copy of the crates.
 ## Rebuilding the standard library
 [rebuilding-the-standard-library]: #rebuilding-the-standard-library
 
-Cargo configuration will contain a new top-level key `build-std`, permitting one
-of three values - "off", "target-modifiers" (default) or "always":
+Cargo configuration (i.e. `.config/cargo`) will contain a new top-level key
+`build-std`, permitting one of three values - "off", "target-modifiers"
+(default) or "always":
 
 ```toml
 build-std = "target-modifiers" # or `off`/`always`
 ```
+
+**TODO:** different defaults per profile? per target? override per target
 
 *See [Unresolved questions][unresolved-questions] to bikeshed which section the
 `build-std` key should be in and what it should be named.*
@@ -612,8 +625,11 @@ component to provide the standard library depending on the value of the
 - If `build-std = "target-modifiers"`, then the pre-built standard library will
   be used as long as it was compiled with target modifiers compatible with the
   current profile.
-- If `build-std = "always"`, then the pre-built standard library will be used
-  only if it has an identical configuration to the current profile.
+- If `build-std = "match-profile"`, then the pre-built standard library will be
+  used only if it has an identical configuration to the current profile.
+
+*See [Unresolved questions][unresolved-questions] to bikeshed what the values of
+the `build-std` key should be named.*
 
 When the pre-built standard library is not used or available, Cargo will build
 and use the standard library from source with the requested profile. See
@@ -640,6 +656,8 @@ The host pre-built standard library will always be used for procedural macros
 and build scripts. At least initially, artifact dependencies use the same
 standard library as the rest of the crate (pre-built or newly-built, as
 appropriate).
+
+**TODO:** compiler-builtins must be passed to rustc via extern, why? look into this
 
 *See the following sections for rationale/alternatives:*
 
@@ -674,7 +692,9 @@ be used. If the profile of the user's crate sets a configuration option, that
 will be merged with the standard library's profile (e.g. if the user sets
 `profile.release opt-level` that will override the standard library's release
 `opt-level`, or if the user sets `profile.release.rustflags` that will be
-appended to the standard library's release `rustflags`).
+appended to the standard library's release `rustflags`). The method of merging
+will depend on the type of the value (e.g. lists like `rustflags` will be
+merged, strings and other literals like `opt-level` prefer the user's setting).
 
 Profile overrides in the standard library's workspace continue to apply to its
 dependencies. User profile overrides for specific crates can only apply to the
@@ -745,7 +765,7 @@ standard library with a stable toolchain.
 [panic-strategies]: #panic-strategies-1
 
 Panic strategies are unlike other profile settings insofar as they influence
-which crates and flags are passed to the standard library. For example. if
+which crates and flags are passed to the standard library. For example, if
 `panic = "unwind"` were set in the Cargo profile then the `panic_unwind` feature
 would need to be provided to `std` and `-Cpanic=unwind` passed to suggest that
 the compiler use that panic runtime.
@@ -772,7 +792,9 @@ not `panic` is set in the profile:
 Tests, benchmarks, build scripts and proc macros continue to ignore the "panic"
 setting and `panic = "unwind"` is always used. Once `panic-abort-tests` is
 stabilised, the standard library can be built with the profile's panic strategy
-even for tests, benchmarks, build scripts and procedural macros.
+even for tests, benchmarks and build scripts.
+
+**TODO:** rustflags 
 
 *Possibilities for avoiding unnecessary `panic_unwind` builds are explored in
 [Future possibilities][future-possibilities].*
@@ -805,13 +827,16 @@ components, such as `rust-mingw`, rustc's `-Clink-self-contained` will be able
 to link against the object files and build-std should never fail on account of
 missing special object files.
 
+*Possibilities for rebuilding special object files locally are explored in
+[Future possibilities][future-possibilities].*
+
 ### `compiler-builtins-mem`
 [compiler-builtins-mem]: #compiler-builtins-mem
 
 The `mem` feature of `compiler_builtins` (and the subsequent
 `compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
-`compiler_builtins/mem`) is required by `no_std` crates because `libc` is not
-providing these symbols without `std`.
+`compiler_builtins/mem`) is required by `no_std` crates because `libc` does not
+provide these symbols without `std`.
 
 It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
 `core` be enabled when `std` is not in the crate graph.
@@ -823,7 +848,7 @@ It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
 ### Potential migration breakage
 [potential-migration-breakage]: #potential-migration-breakage
 
-When building an existing `no_std` project for a tier three target with
+When building an existing `no_std` project for a tier two or three target with
 build-std, there could be an implicit dependency on `std` from a dependency
 `no_std` crate that has not yet made its dependency on only the `core` crate
 explicit, for example. In this circumstance, this would fail to build as the
@@ -838,7 +863,7 @@ specification and Cargo will refuse to build `std` (see
 ### Caching
 [caching]: #caching
 
-Standard library artifacts build by built-std will not be shared between crates
+Standard library artifacts built by build-std will not be shared between crates
 or workspaces, as they only exist in the `target` directory of a specific crate
 or workspace.
 
@@ -930,9 +955,11 @@ any other dependency.
 
 **TODO:** show example output
 
-[`cargo miri`][cargo-miri] could be re-implemented using build-std to enable a
-`miri` profile and always rebuild. The `miri` profile would be configured in the
-standard library's workspace, setting the flags/options necessary for `miri`.
+[`cargo miri`][cargo-miri] is not built into Cargo, it is shipped by miri, but
+is mentioned in Cargo's documentation. It could be re-implemented using
+build-std to enable a `miri` profile and always rebuild. The `miri` profile
+would be configured in the standard library's workspace, setting the
+flags/options necessary for `miri`.
 
 [`cargo pkgid`][cargo-pkgid] when passed `-p core` would print `builtin#core` as
 the source, likewise with `alloc` and `std`.
@@ -1023,6 +1050,8 @@ build-std has no implications for the following Cargo subcommands:
 - [`cargo version`][cargo-version]
 - [`cargo yank`][cargo-yank]
 
+**TODO:** consider popular third-party subcommands
+
 ## Public and private dependencies
 [public-and-private-dependencies]: #public-and-private-dependencies
 
@@ -1054,6 +1083,7 @@ std = { builtin = true, public = true }
 
 *See the following sections for rationale/alternatives:*
 - [*Why default to public for the implicit standard library dependencies?*][why-default-to-public-for-the-implicit-standard-library-dependencies]
+- [*Why follow the default privacy of explicit standard library dependencies?*][why-default-to-public-for-the-implicit-standard-library-dependencies]
 
 **TODO**: document new constraints on std - no new C dependencies, no
 target-specific features (like compiler-builtins/mem)
@@ -1095,17 +1125,30 @@ knows how to create a new toolchain from an existing sysroot (as in
 abstraction (Cargo) in the same way that Cargo invokes tools from the layer of
 abstraction after it (rustc).
 
-A brief prototype of this idea was created and
+A brief prototype of this idea was created and a
 [short design document was drafted][why-not-rustup] before concluding that it
 would not be possible. With artifact dependencies, it may be desirable to build
 with a different standard library and if rustup was creating different
 toolchains per-customised standard library then Cargo would need to have
 knowledge of these to switch between them, which isn't possible (and something
-of a layering violation).
+of a layering violation). It is also unclear how Cargo would find and use the
+uncustomised host sysroot for build scripts and procedural macros.
 
 [^2]: While `--extern` is used in today's unstable implementation, this is largely
 for convenience, creating a new sysroot and using it with `--sysroot` is
 equivalent.
+
+## Why record support for `core`, `alloc` and `std` separately?
+[why-record-support-for-core-alloc-and-std-seperately]: #why-record-support-for-core-alloc-and-std-seperately
+
+It is intuitive that some targets may not support the standard library and so
+needing to keep track of whether `std` is supported is necessary. However, it is
+not obvious why keeping track of whether `alloc` and `core` are supported
+individually is necessary:
+
+Most targets will support `core`. `core` would only be set to `false` for very
+experimental targets which do not support build-std at all. `alloc` would be set
+to `false` for those targets that do not support allocation.
 
 ## Should target specifications own knowledge of which standard library crates are supported?
 [should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported]: #should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported
@@ -1175,6 +1218,8 @@ the standard syntax for this would be necessary, such as a flag (e.g.
 optional dependencies, public/private features, etc.
 
 **TODO:** document alternatives, or at least link to "why not automatic" below
+**TODO:** Cargo already reads Rust source to detect frontmatter, so could detect
+`#![no_std]` as an alternative
 
 ## Why disallow explicit builtin dependencies on other crates?
 [why-disallow-explicit-builtin-dependencies-on-other-crates]: #why-disallow-explicit-builtin-dependencies-on-other-crates
@@ -1206,13 +1251,13 @@ library dependencies to be understood.
 
 Alternative syntaxes, such as requiring `version = "*"` for explicit standard
 library dependencies, could be worthwhile to maintain a greater level of
-compatibility with older toolchain versions. However, as any currently accepted
-syntax would necessarily be interpreted differently by the build-std-supporting
-versions of Cargo, this doesn't really solve anything. For example, while
+compatibility with older toolchain versions. Any currently accepted syntax would
+necessarily be interpreted differently by the build-std-supporting versions of
+Cargo, so this approach has its own complications. For example, while
 `version = "*"` would be understood by older versions of Cargo, it would attempt
-to find the standard library crates on crates.io and fail. This is not a
-build-std specific issue and is true of any RFC adding to what can be written in
-`Cargo.toml`.
+to find the standard library crates on crates.io and fail unless empty crates
+were published named `core`, `alloc` and `std`. This is not a build-std specific
+issue and is true of any RFC adding to what can be written in `Cargo.toml`.
 
 ## Why not use weak linkage for `compiler-builtins/mem` symbols?
 [why-not-use-weak-linkage-for-compiler-builtins-mem-symbols]: #why-not-use-weak-linkage-for-compiler-builtinsmem-symbols
@@ -1229,7 +1274,7 @@ has precedence over shared libraries and the symbols of a dynamically-linked
 ## Why permit patching of the standard library dependencies on nightly?
 [why-permit-patching-of-the-standard-library-dependencies-on-nightly]: #why-permit-patching-of-the-standard-library-dependencies-on-nightly
 
-Being able to patching standard library dependencies and replace their source
+Being able to patch standard library dependencies and replace their source
 with a `path` dependency is required to be able to replace `rustc_dep_of_std`.
 As crates which use these sources cannot be published to crates.io, this would
 not enable a usable general-purpose mechanism for crates to modify the standard
@@ -1242,8 +1287,8 @@ required for it to be used in replacing `rustc_dep_of_std`.
 ## Why prevent rustc from loading root dependencies from the sysroot?
 [why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot]: #why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot
 
-When standard library dependencies are explicitly passed to rustc, there is no
-need to load root dependencies from the sysroot, which could be a source of bugs.
+Loading root dependencies from the sysroot could be a source of bugs, which is
+prevented by always passing standard library dependencies explicitly to rustc.
 
 For example, if a crate depends only on `core` which is built with a customised
 profile, then a user could still write `extern crate alloc` and accidentally
@@ -1319,7 +1364,11 @@ Vendoring the standard library's dependencies has multiple advantages..
 
 - A larger `rust-src` component takes up more disk space and takes longer to
   download
+    - If using build-std, these dependencies would have to be downloaded anyway,
+      so this is only an issue if build-std is not used and `rust-src` is
+      downloaded
 - Vendored dependencies can't be updated with the latest security fixes
+  - This is no different than the pre-built standard library
 
 See
 [*Why use the lockfile of the `rust-src` component?*][why-use-the-lockfile-of-the-rust-src-component]
@@ -1329,13 +1378,18 @@ See
 
 As the default configuration for `build-std` is `target-modifiers`, debug builds
 of the user's crate would not trigger a rebuild of the standard library and
-would use the pre-built standard library. It would only be when
+would use the pre-built standard library (as the release profile does not change
+any target modifiers compared to the debug profile). It would only be when
 `build-std = "always"` that any debug build would first trigger a rebuild of the
 standard library.
 
 To improve the user experience in this circumstance, it could be worth shipping
 a debug profile `rust-std`, but as this is not the common case, it isn't
-proposed in this RFC.
+proposed in this RFC. Some intrinsics rely on optimisations so a debug profile
+standard library may result in counterintuitive or unexpected behaviour for
+users. If a debug `rust-std` was eventually made available, it might be expected
+that it be used for any `debug` profile build, which would involve more
+machinery.
 
 ## Why respect profile overrides of the standard library's workspace?
 [why-respect-profile-overrides-of-the-standard-librarys-workspace]: #why-respect-profile-overrides-of-the-standard-librarys-workspace
@@ -1460,13 +1514,23 @@ If the implicit standard library dependency were not public then these crates
 would start to trigger the `exported_private_dependencies` lint when upgrading
 to a version of Cargo with an implicit standard library dependency.
 
+## Why follow the default privacy of explicit standard library dependencies?
+[why-default-to-public-for-the-implicit-standard-library-dependencies]: #why-default-to-public-for-the-implicit-standard-library-dependencies
+
+This may be unintuitive when a user first writes an explicit standard library
+dependency, triggering the `exported_private_dependency` lint, but this would be
+caught immediately by the user. However, it is also unintuitive that the default
+for privacy of a explicitly written dependency would depend on which crate the
+dependency was (i.e. the standard library has a different default than
+everything else).
+
 ## Why not replace `#![no_std]` as the source-of-truth for whether a crate depends on `std`?
 [why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std]: #why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std
 
 Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
-dependency on the standard library. With `Cargo.toml` being used to express a
-dependency on the standard library (or lack thereof), it is unintuitive for
-there to be two sources-of-truth for this information.
+dependency on `std`. With `Cargo.toml` being used to express a dependency on the
+standard library (or lack thereof), it is unintuitive for there to be two
+sources-of-truth for this information.
 
 `#![no_std]` serves two purposes - it stops the compiler from loading `std` from
 the sysroot and adding `extern crate std`, and it prevents the user from
@@ -1485,7 +1549,7 @@ metadata.
 
 *The following summary of the prior art is necessarily less detailed than the
 source material, which is exhaustively surveyed in
-[Appendix I: Exhaustive literature review][appendix-i].*
+[Appendix II: Exhaustive literature review][appendix-ii].*
 
 ## [rfcs#1133] (2015)
 [rfcs-1133-2015]: #rfcs1133-2015
@@ -1960,6 +2024,8 @@ stabilisation and aren't pertinent to the overall design:
 - Bikeshed: Where should the `build-std` configuration in `.cargo/config` be and
   what should it be called?
   - i.e. top-level or in a section? `build-std`? `rebuild-standard-library`?
+- Bikeshed: What should the values of the `build-std` config be?
+  - i.e. `always`/`match-profile`/`rebuild-builtins`?
 
 The following details are to be worked out during implementation:
 
@@ -1989,9 +2055,15 @@ There are many possible follow-ups to build-std:
   - This would make build-std easier for users who do not use `rustup`. It would
     require Cargo to use `RUSTC_BOOTSTRAP` as the sources would not be found in
     the sysroot
+- Enable local recompilation of special object files/sanitizer runtimes.
 
-# Appendix I: Exhaustive literature review
-[appendix-i]: #appendix-i-exhaustive-literature-review
+# Appendix I: Summary of features to be implemented
+[appendix-i]: #appendix-i-summary-of-features-to-be-implemented
+
+**TODO:** write this after completing the rest
+
+# Appendix II: Exhaustive literature review
+[appendix-ii]: #appendix-ii-exhaustive-literature-review
 
 This section will attempt to summarize every issue, pull request, RFC and
 discussion related to the design and implementation of build-std since its
