@@ -602,15 +602,23 @@ library's workspace to point to the local copy of the crates.
 ## Rebuilding the standard library
 [rebuilding-the-standard-library]: #rebuilding-the-standard-library
 
-Cargo configuration (i.e. `.config/cargo`) will contain a new top-level key
-`build-std`, permitting one of three values - "off", "target-modifiers"
-(default) or "always":
+Cargo configuration will contain a new key `build-std` under the `[build]`
+section, permitting one of three values - "off", "target-modifiers" (default) or
+"always":
 
 ```toml
+[build]
 build-std = "target-modifiers" # or `off`/`always`
 ```
 
-**TODO:** different defaults per profile? per target? override per target
+As the Cargo configuration is not inherited from dependencies, `build-std` can
+only be controlled by the author of the root project.
+
+In addition, `build-std` can be set in the `[target.<triple>]` and
+`[target.<cfg>]` sections in order to facilitate users who may want to rebuild
+the standard library on certain targets [wg-cargo-std-aware#89].
+
+**TODO:** different defaults per profile?
 
 *See [Unresolved questions][unresolved-questions] to bikeshed which section the
 `build-std` key should be in and what it should be named.*
@@ -671,6 +679,7 @@ appropriate).
 - [*Why also build `proc_macro`, `test` and `profiler_builtins`?*][why-also-build-proc_macro-test-and-profiler_builtins]
 - [*Why rebuild the standard library automatically?*][why-rebuild-the-standard-library-automatically]
 - [*Why use the lockfile of the `rust-src` component?*][why-use-the-lockfile-of-the-rust-src-component]
+- [*Why put `build-std` in the Cargo config?*][why-put-build-std-in-the-cargo-config]
 
 ### Profiles
 [profiles]: #profiles
@@ -790,11 +799,12 @@ not `panic` is set in the profile:
     built.
 
 Tests, benchmarks, build scripts and proc macros continue to ignore the "panic"
-setting and `panic = "unwind"` is always used. Once `panic-abort-tests` is
-stabilised, the standard library can be built with the profile's panic strategy
-even for tests, benchmarks and build scripts.
+setting and `panic = "unwind"` is always used - which means the standard library
+needs to be recompiled again if the user is using "abort". Once
+`panic-abort-tests` is stabilised, the standard library can be built with the
+profile's panic strategy even for tests and benchmarks.
 
-**TODO:** rustflags 
+**TODO:** rustflags
 
 *Possibilities for avoiding unnecessary `panic_unwind` builds are explored in
 [Future possibilities][future-possibilities].*
@@ -1185,7 +1195,7 @@ used on nightly as `-Zbuild-std` would need to be used to build at least `core`.
 As such, if build-std were to be stabilised, custom targets would become much
 more usable on stable toolchains.
 
-In order to avoid users relying on the unstable target-spec-json format on a
+In order to avoid users relying on the [unstable target-spec-json][rust#71009] format on a
 stable toolchain, using custom targets with build-std on a stable toolchain is
 disallowed until another RFC can consider all the implications of this
 thoroughly.
@@ -1417,6 +1427,26 @@ this is already true.
 
 See
 [*Why vendor the standard library's dependencies?*][why-vendor-the-standard-librarys-dependencies]
+
+## Why put `build-std` in the Cargo config?
+[why-put-build-std-in-the-cargo-config]: #why-put-build-std-in-the-cargo-config
+
+The main [motiviations][motivation] to rebuild the standard library inherently
+come from the target platform of the project or the codegen flags used during
+compilation. This means the author of the root project may want a higher level
+of control than filtering on the target triple or `cfg` options in the
+`Cargo.toml` would allow.
+
+The Cargo configuration does not aggregrate based on dependencies. This
+behaviour is not really required as each library would likely come to the same
+conclusion about whether the user wants to enable build-std and would probably
+necessitate a top-level user override anyway in case a library guessed
+incorrectly.
+
+It also seems to be true that the standard library features currently available
+should also be controlled by the top-level user rather than set by dependencies
+and resolved together, which suggests that Cargo features may not be the correct
+mechanism for configuring the standard library.
 
 ## Why default to assuming the pre-built standard library is the release profile? 
 [why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile]: #why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile
