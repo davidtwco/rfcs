@@ -1,3 +1,8 @@
+---
+toc:
+  maxLevel: 99
+---
+
 - Feature Name: `build-std`
 - Start Date: 2025-06-05
 - RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
@@ -18,7 +23,6 @@ This RFC proposes a handful of changes to Cargo, the compiler and standard
 library with the goal of defining a minimal build-std that has the potential of
 being stabilised:
 
-- Retiring `#![no_std]`
 - Explicitly declaring support for the standard library in target specs
 - Explicit and implicit dependencies on the standard library in `Cargo.toml`
 - Re-building the standard library when the profile or target modifiers change
@@ -439,13 +443,12 @@ library's [`build.rs`][std-build.rs] as it is replaced by this mechanism.
 Cargo will detect when the standard library is to be built for a custom target
 and will emit an error.
 
-Cargo could detect use of a custom target either by checking if the value to
-`--target` is a valid path to a file ending in `.json`, checking it against the
-list of built-in targets that rustc reports knowing about (via
-`--print target-list`), checking for a file in `$RUST_TARGET_PATH/$target.json`
-or in the sysroot at `$sysroot/lib/rustlib/$target/target.json`.
+Cargo could detect use of a custom target either by comparing it with the list
+of built-in targets that rustc reports knowing about (via `--print target-list`)
+or by checking if a file exists at the path matching the provided target name.
 
-Custom targets can still be used with build-std on nightly toolchains.
+Custom targets can still be used with build-std on nightly toolchains provided
+that `-Zunstable-options` is present.
 
 *See the following sections for rationale/alternatives:*
 
@@ -457,11 +460,7 @@ Custom targets can still be used with build-std on nightly toolchains.
 ## Standard library dependencies
 [standard-library-dependencies]: #standard-library-dependencies
 
-Every crate now has a implicit dependency on the `std` crate. This implicit
-dependency can be removed if a user explicitly writes a dependency on any of the
-standard library crates - `core`, `alloc` or `std`.
-
-In the `hello_world` crate below, there is an implicit dependency on `std`..
+Every unmigrated crate now has a implicit dependency on the `std` crate. In the `hello_world` crate below, there is an implicit dependency on `std`..
 
 ```toml
 [package]
@@ -481,16 +480,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-std = { builtin = true } # could be `alloc` or `core` instead
+std = { builtin = true }
 ```
 
 `builtin` is a new source of dependency, like crates.io dependencies (with the
 `version` key), `path` dependencies or `git` dependencies. `builtin` can only be
 set to `true` and cannot be combined with any other dependency source. `builtin`
-can only be used with crates named `core`, `alloc` or `std`. crates.io will
-accept crates published which have `builtin` dependencies.
-
-**TODO:** if std actually is sysroot, what if you want test w/out std or profiler_builtins w/out std
+can only be used with crates named `core`, `alloc` or `std`. Any `builtin`
+dependency present in the manifest will disable the implicit dependency on
+`std`. crates.io will accept crates published which have `builtin` dependencies.
 
 *See [Unresolved questions][unresolved-questions] to bikeshed `builtin = true`.*
 
@@ -685,25 +683,29 @@ appropriate).
 [profiles]: #profiles
 
 Cargo will assume that the pre-built standard library matches the default
-release profile. If the user changes the default release profile or builds with
-a different profile then depending on the value of `build-std` in the
-`.cargo/config`, this could trigger a rebuild. rustc will add a
-`--print target-modifiers` flag which will print all of the flags treated as
-target modifiers, like `-Zretpoline`, with one flag per line. If changing a
-profile setting would result in one of these flags being emitted by Cargo, then
-a target modifier has changed and would no longer match the pre-built standard
+release profile and will try to reuse it even if `build-std` is enabled. If the
+user changes the default release profile or builds with a different profile then
+this will trigger a rebuild - akin to if it's build cache was invalidated.
+
+If `build-std` is set to `target-modifiers`, Cargo must decide if `build-std`
+should be enabled. rustc will add a `--print target-modifiers` flag which will
+print all of the flags treated as target modifiers, like `-Zretpoline`, with one
+flag per line. If changing a profile setting would result in one of these flags
+being emitted by Cargo then it assumes a target modifier has changed from the
+default release profile and would no longer match the pre-built standard
 library.
 
+**TODO:** This may trigger a "false positive" if the Cargo emits a
+target-modifier set to it's default value.
+
 Standard library crates will be built using the configuration of the current
-profile defined in the standard library's workspace. For example, if building in
-the release profile, the release profile of the standard library workspace will
-be used. If the profile of the user's crate sets a configuration option, that
-will be merged with the standard library's profile (e.g. if the user sets
-`profile.release opt-level` that will override the standard library's release
-`opt-level`, or if the user sets `profile.release.rustflags` that will be
-appended to the standard library's release `rustflags`). The method of merging
-will depend on the type of the value (e.g. lists like `rustflags` will be
-merged, strings and other literals like `opt-level` prefer the user's setting).
+profile defined in the standard library's workspace. For example, if building
+the standard library in the release profile, the release profile of the standard library workspace will be used. If the profile of the user's crate sets a
+configuration option, that will be merged with the standard library's profile
+(e.g. if the user sets `profile.release opt-level` that will override the
+standard library's release `opt-level`, or if the user sets
+`profile.release.rustflags` that will be appended to the standard library's
+release `rustflags`).
 
 Profile overrides in the standard library's workspace continue to apply to its
 dependencies. User profile overrides for specific crates can only apply to the
@@ -897,8 +899,12 @@ instrumentation must be present for all of the crates to avoid false negatives.
 
 rustc's sanitizer support attempts to locate sanitizer runtimes in the sysroot
 (`$sysroot/lib/rustlib/$target/lib/`) to link against. Rust already ships
-sanitizer runtimes for targets that support sanitizers, so all that is necessary
-is to be able to rebuild the standard library crates, which build-std enables.
+sanitizer runtimes for targets that support sanitizers and with the use of
+`build-std` as proposed in this RFC all Rust crates in a crate graph should have
+coverage with the requested sanitizers.
+
+Combining these shipped sanitizer runtimes with other target modifiers is
+outside the scope of this RFC.
 
 ## Cargo subcommands
 [cargo-subcommands]: #cargo-subcommands
@@ -999,19 +1005,27 @@ the other dependencies of `std`, `alloc` or `core` will be shown. Neither `std`,
 ```shell-session
 $ cargo tree
 myproject v0.1.0 (/myproject)
-└── rand v0.7.3
-    ├── getrandom v0.1.14
-    │   ├── cfg-if v0.1.10
-    │   └── libc v0.2.68
-    ├── libc v0.2.68 (*)
-    ├── rand_chacha v0.2.2
-    │   ├── ppv-lite86 v0.2.6
-    │   └── rand_core v0.5.1
-    │       └── getrandom v0.1.14 (*)
-    ├── rand_core v0.5.1 (*)
-    └── std (*)
-        └── alloc (*)
-            └── core (*)
+├── rand v0.7.3
+│   ├── getrandom v0.1.14
+│   │   ├── cfg-if v0.1.10
+│   │   │   └── core v0.0.0
+│   │   ├── libc v0.2.68
+│   │   │   └── core v0.0.0
+│   │   └── core v0.0.0
+│   ├── libc v0.2.68 (*)
+│   │   └── core v0.0.0
+│   ├── rand_chacha v0.2.2
+│   │   ├── ppv-lite86 v0.2.6
+│   │   │   └── core v0.0.0
+│   │   ├── rand_core v0.5.1
+│   │   │   ├── getrandom v0.1.14 (*)
+│   │   │   └── core v0.0.0
+│   │   └── std v0.0.0
+│   │       └── alloc v0.0.0
+│   │           └── core v0.0.0
+│   ├── rand_core v0.5.1 (*)
+│   └── std v0.0.0 (*)
+└── std v0.0.0 (*)
 ```
 
 [`cargo update`][cargo-update] will not update the dependencies of `std`,
