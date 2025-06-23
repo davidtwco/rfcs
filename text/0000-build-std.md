@@ -1,8 +1,3 @@
----
-toc:
-  maxLevel: 99
----
-
 - Feature Name: `build-std`
 - Start Date: 2025-06-05
 - RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
