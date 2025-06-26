@@ -1013,12 +1013,6 @@ Standard library dependencies cannot be renamed.
 Implicit and explicit standard library dependencies are added to `Cargo.lock`
 ([?][rationale-cargo-lock]).
 
-> [!NOTE]
->
-> **TODO:** Standard library dependencies in Cargo's index
->
-> [?][rationale-cargo-index]
-
 *See the following sections for rationale/alternatives:*
 
 - [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][rationale-why-explicit-deps]
@@ -1026,7 +1020,6 @@ Implicit and explicit standard library dependencies are added to `Cargo.lock`
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
 - [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
 - [*Why add standard library dependencies to Cargo.lock?*][rationale-cargo-lock]
-- [*Why add standard library crates to Cargo's index?*][rationale-cargo-index]
 
 *See the following sections for relevant unresolved questions:*
 
@@ -1812,6 +1805,71 @@ build-std has no implications for the following Cargo subcommands:
 - [`cargo version`][cargo-version]
 - [`cargo yank`][cargo-yank]
 
+## Cargo implemenation changes
+[cargo-changes]: #cargo-changes
+
+### Registry index JSON
+[registry-index-json]: #registry-index-json
+
+A new key is added to the [JSON schema][cargo-json-schema], named `builtin_deps`. This key
+is conceptually similar to `deps` and its type is a list of JSON objects, each
+representing a dependency that is "builtin" to the Rust toolchain and cannot be
+found in the registry. The keys of these objects are as follows:
+
+- `name`:
+  The `builtin` package name. The name can shadow other packages in the
+  registry, which is required as standard library crates are technically not
+  disallowed on third-party registries, though `crates.io` forbids it.
+- `features`:
+  An array of strings representing enabled features in order to support changing
+  the standard library features on nightly. crates.io should disallow setting
+  this to anything but an empty array. Optional, and an empty array is the
+  default value.
+- `default_features`:
+  Inherited from `deps` with the same definition. crates.io should disallow
+  setting this to anything except the default `true`.
+- `optional`, `target`, `kind`, `package`:
+  These keys are inherited from `deps`, with the same definition.
+
+The following keys from `deps` are not required:
+
+- `req`:
+  All standard library packages have a version of `0.0.0`, meaning this key no
+  longer has a purpose. Compatibility with older versions of the Rust toolchain
+  is managed by the `rust_version` key in the JSON schema.
+- `registry`:
+  Not required as all deps are provided by the toolchain rather than a registry.
+
+Older versions of Cargo will ignore any `builtin_deps` keys and continue to
+function even if newer crates are released with some defined. The key is
+optional and its default value will be the implicit `std` dependency:
+
+```json
+"builtin_deps" : [
+    {
+        "name": "std",
+        "features": [],
+        "optional": false,
+        "default_features": true,
+        "target": null,
+        "kind": "normal",
+        "package": null
+    }
+]
+```
+
+- [*Why add standard library crates to Cargo's index?*][rationale-cargo-index]
+
+### Cargo-util-schemas
+[cargo-util-schemas]: #cargo-util-schemas
+
+In order to model builtin packages that may not need to be built from source a
+new [`SourceKind`][cargo-sourcekind] variant will be added, named `PreBuilt`.
+This extends the use of `SourceKind` to refer to something that isn't source
+code, and likewise for types that use it such as [`SourceId`][cargo-sourceid].
+
+- [*Why modify cargo-util-schema definitions?*][rationale-cargo-util-schema]
+
 ## Constraints on the standard library, compiler and bootstrap
 [constraints-on-the-standard-library]: #constraints-on-the-standard-library-compiler-and-bootstrap
 
@@ -2063,7 +2121,8 @@ issue and is true of any RFC adding to what can be written in `Cargo.toml`.
 [rationale-cargo-lock]: #why-add-standard-library-dependencies-to-cargolock
 
 `Cargo.lock` is a direct serialisation of a resolve and that must be a two-way
-non-lossy process.
+non-lossy process in order to make the `Cargo.lock` useful without doing further
+resolution to fill in missing `builtin` packages.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
@@ -2073,7 +2132,26 @@ non-lossy process.
 When Cargo builds the dependency graph, it is driven by the index (not
 `Cargo.toml`), so builtin dependencies need to be included in the index.
 
-↩ [*Standard library dependencies*][standard-library-dependencies]
+Even if a `builtin` package can be unambiguously represented as an entry in
+the `deps` key, older versions of Cargo expect to find packages either in the
+current registry or at the URL under the `registry` key. This could cause them
+to fail upon encountering a `builtin` package not in a registry. Adding "dummy"
+`builtin` packages to every registry (named after `std`, `alloc` and `core`,
+which are not permitted names on `crates.io`) to registries would not work as
+they would be passed into `rustc` build invocations via `extern`, preventing
+loading the real crates from the sysroot.
+
+↩ [*Registry index JSON*][registry-index-json]
+
+### Why modify cargo-util-schema definitions?
+[rationale-cargo-util-schema]: #why-modify-cargo-util-schema-definitions
+
+Dependencies specified as `builtin` cannot currently be represented in Cargo's
+`cargo-util-schemas`. In particular, no [`SourceKind`][cargo-sourcekind] variant
+can represent the prebuilt binaries of `builtin` dependencies in the sysroot,
+which is required to uniquely identify a package with a [`PackageIdSpec`][cargo-packageidspec].
+
+↩ [*Cargo-util-schemas*][cargo-util-schemas]
 
 ### Why permit patching of the standard library dependencies on nightly?
 [rationale-patching]: #why-permit-patching-of-the-standard-library-dependencies-on-nightly
@@ -4211,6 +4289,10 @@ general feature for Cargo that could then apply to build-std too:
 [bootstrap-sanitizers]: https://github.com/rust-lang/rust/blob/d13a431a6cc69cd65efe7c3eb7808251d6fd7a46/bootstrap.example.toml#L388
 [build-std-features]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std-features
 [build-std]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+[cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
+[cargo-packageidspec]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo_util_schemas/core/struct.PackageIdSpec.html
+[cargo-sourcekind]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo_util_schemas/core/source_kind/enum.SourceKind.html
+[cargo-sourceid]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo/core/struct.SourceId.html
 [conditional-compilation-config-options]: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 [embed-rs-cargo-toml]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/Cargo.toml#L21
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
