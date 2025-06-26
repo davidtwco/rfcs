@@ -917,7 +917,7 @@ Cargo will detect when the standard library is to be built for a custom target
 and will emit an error ([?][rationale-disallow-custom-targets]).
 
 > [!NOTE]
-> 
+>
 > Cargo could detect use of a custom target either by comparing it with the list
 > of built-in targets that rustc reports knowing about (via `--print target-list`)
 > or by checking if a file exists at the path matching the provided target name.
@@ -1296,14 +1296,14 @@ and use the standard library from source with the requested profile.
 > `--extern noprelude:std=path/to/std.lib` so that writing `extern crate alloc`
 > or `extern crate core` works as it does with the pre-built standard library
 > from the sysroot.
-> 
+>
 > rustc will find any dependencies of these crates first from the paths provided
 > with `-L dependency=` and then from the sysroot. rustc will attempt to load
 > some crates like `compiler_builtins` and `panic_unwind` itself.
 >
 > rustc will need patched to be able to load `panic_unwind` from
 > `-L dependency=` paths.
-> 
+>
 > Cargo will load the sysroot crate in the standard library and perform the
 > resolve on that workspace with the packages that the user has a explicit
 > dependency on and those which require `--extern` to be passed explicitly.
@@ -1347,12 +1347,12 @@ User's Cargo profile | Target modifiers changed? | Standard library profile
 `dev`                | Yes                       | `dev` (newly built)
 
 > [!NOTE]
-> 
+>
 > If `build-std` is set to `target-modifiers`, Cargo must decide if `build-std`
 > should be enabled. rustc will add a `--print target-modifiers` flag which will
 > print all of the flags treated as target modifiers, like `-Zretpoline`, with
 > one flag per line and its default value.
-> 
+>
 > If changing a profile configuration would result in one of these flags being
 > emitted by Cargo then it assumes a target modifier has changed from the
 > default release profile and would no longer match the pre-built standard
@@ -1675,7 +1675,7 @@ any other dependency.
 > [!NOTE]
 >
 > `cargo metadata` output could look as follows:
-> 
+>
 > ```json
 > {
 >   "packages": [
@@ -1705,8 +1705,8 @@ any other dependency.
 is mentioned in Cargo's documentation. `cargo miri` is unchanged by this RFC,
 but build-std is one step towards `cargo miri` requiring less special support.
 
-> [!NOTE] 
-> 
+> [!NOTE]
+>
 > `cargo miri` could be re-implemented using build-std to enable a `miri`
 > profile and always rebuild. The `miri` profile would be configured in the
 > standard library's workspace, setting the flags/options necessary for `miri`.
@@ -1739,7 +1739,7 @@ the other dependencies of `std`, `alloc` or `core` will be shown. Neither `std`,
 > [!NOTE]
 >
 > `cargo tree` output could look as follows:
-> 
+>
 > ```shell-session
 > $ cargo tree
 > myproject v0.1.0 (/myproject)
@@ -2026,7 +2026,8 @@ added manually by users:
   the standard library and it is not desirable that users can observe their
   existence or depend on them directly.
 - Other crates in the sysroot added by users are not something that can
-  reasonably be supported by build-std.
+  reasonably be supported by build-std and should be added as regular
+  dependencies.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
@@ -2041,7 +2042,7 @@ edition or through some other mechanism), then every crate would require the
 newest version of Cargo to be understood, effectively raising the MSRV of every
 Rust crate.
 
-If only `no_std` crates (or crates with a `no_std` feature) add explicit
+If only `no_std` crates (or crates with a `std` feature) add explicit
 dependencies on `core` or `alloc` then a much smaller percentage of the crates
 ecosystem will require the newest Cargo versions for their new explicit standard
 library dependencies to be understood.
@@ -2077,10 +2078,10 @@ When Cargo builds the dependency graph, it is driven by the index (not
 ### Why permit patching of the standard library dependencies on nightly?
 [rationale-patching]: #why-permit-patching-of-the-standard-library-dependencies-on-nightly
 
-Being able to patch standard library dependencies and replace their source
-with a `path` dependency is required to be able to replace `rustc_dep_of_std`.
-As crates which use these sources cannot be published to crates.io, this would
-not enable a usable general-purpose mechanism for crates to modify the standard
+Being able to patch `builtin = true` dependencies and replace their source with
+a `path` dependency is required to be able to replace `rustc_dep_of_std`. As
+crates which use these sources cannot be published to crates.io, this would not
+enable a usable general-purpose mechanism for crates to modify the standard
 library sources. This capability is restricted to nightly as that is all that is
 required for it to be used in replacing `rustc_dep_of_std`.
 
@@ -2089,11 +2090,11 @@ required for it to be used in replacing `rustc_dep_of_std`.
 ### Why limit enabling standard library features to nightly?
 [rationale-features]: #why-limit-enabling-standard-library-features-to-nightly
 
-If it were possible to enable features of the standard library crates on stables
+If it were possible to enable features of the standard library crates on stable
 then all of the standard library's current features would immediately be held to
 the same stability guarantees as the rest of the standard library, which is not
 desirable. See
-[*Allow enabling/disabling features with build-std*][allow-enabling-disabling-features-with-build-std].
+[*Allow enabling/disabling features with build-std*][future-features]
 
 ↩ [*Features*][features]
 
@@ -2123,9 +2124,9 @@ everything else).
 [rationale-no-deps-in-build-deps]: #why-not-support-implicit-or-explicit-standard-library-dependencies-in-build-dependencies
 
 `build-dependencies` only apply to build scripts which are run on the host
-toolchain There is little advantage to using a custom standard library with
+toolchain. There is little advantage to using a custom standard library with
 build scripts as they are not part of the final output artifact and anywhere
-they can run already have a toolchain with host tools and a pre-built standard
+they can run already has a toolchain with host tools and a pre-built standard
 library.
 
 See also
@@ -2191,7 +2192,7 @@ development. This corresponds to the typical use case of Cargo's `dev` and
 
 `build-std = "match-profile"` is intended to be used when additional time spent
 building the standard library is not a problem and the quality of the final
-artifact is paramount. This correpsonds closely with the release profile, where
+artifact is paramount. This corresponds closely with the release profile, where
 additional time spent on optimisations (e.g. with `-Ctarget-cpu`) is acceptable.
 Always re-building the standard library with the user's profile configuration in
 release mode is likely to result in a more optimised build than with the
@@ -2208,7 +2209,7 @@ automatically:
 
 1. Cargo could continue to use an explicit command-line flag to enable
    build-std, such as the current `-Zbuild-std` (stabilised as `--build-std`).
-   
+
    This approach is proven to work, as per the current unstable implementation,
    but has a poor user experience, requiring an extra argument to every
    invocation of Cargo with almost every subcommand of Cargo.
@@ -2228,14 +2229,14 @@ automatically:
 
 3. Cargo could have a global opt-in for rebuilding the standard library in the
    Cargo configuration.
-   
+
    This approach could work well but could only be configured globally or on a
    per-target basis, rather than on a per-project basis for only those projects
    that need build-std. Furthermore, users would need to learn about this
    configuration option and enable it when they encounter circumstances which
    require build-std (like enabling a target modifier), which increases the
    cognitive load of those features.
-   
+
    It is similar to the approach proposed by
    [cargo#4959][xargo-and-cargo-4959-2016].
 
@@ -2244,7 +2245,7 @@ alternatives. Rebuilds of the standard library happening transparently reduce
 the requirement that users learn about build-std as something to enable and
 configure. Combined with explicit dependencies on the standard library crates,
 build-std can avoid any cost on users that do not require it (by triggering
-automatically when a target modifier is changed, and having no unnecessarily
+automatically when a target modifier is changed, and having no unnecessary
 rebuilds otherwise).
 
 ↩ [*Rebuilding the standard library*][rebuilding-the-standard-library]
@@ -2254,16 +2255,20 @@ rebuilds otherwise).
 
 Using different dependency versions for the standard library would invalidate
 the upstream testing of the standard library guaranteeing that the standard
-library works as expected for a target, per the target tier policy. Using the
-lockfile included in the `rust-src` component guarantees that the same
+library works as expected for a target, per the target tier policy. In
+particular, some crates use unstable APIs when included as a dependency of the
+standard library meaning that there is a high risk of breakage if any package
+version is changed.
+
+Using the lockfile included in the `rust-src` component guarantees that the same
 dependency versions are used as in the pre-built standard library. As the
-standard library does not re-export types from its dependencies, this will not
-affect interoperability with the same dependencies of different versions used by
-the user's crate.
+standard library `crates.io` dependencies are private, it does not re-export
+types from its dependencies, this will not affect interoperability with the
+same dependencies of different versions used by the user's crate.
 
 Using the lockfile does prevent Cargo from resolving the standard library
 dependencies to newer patch versions that may contain security fixes. However,
-this is already true.
+this is already impossible with the prebuilt standard library.
 
 See
 [*Why vendor the standard library's dependencies?*][why-vendor-the-standard-librarys-dependencies]
@@ -2282,10 +2287,11 @@ would only add a compilation time overhead.
 [rationale-no-dylib]: #why-not-produce-a-dylib-for-the-standard-library
 
 The `std` crate's `Cargo.toml` is configured with
-`crate-type = ["rlib", "dylib"]` so it can produce both artifacts. Only the
-`rlib` is currently shipped by the Rust project and to avoid users depending on
-the dylib and this becoming part of the stability guarantee, it is not produced
-by build-std.
+`crate-type = ["rlib", "dylib"]` so it can produce both artifacts. The Rust
+project ships both artifacts, with the `dylib` only linked against when
+`-Cprefer-dynamic` is enabled. However, the `dylib` is not part of Rust's
+stability guarantee so a first-class way of specifying crate types is left to a
+future extension.
 
 ↩ [*Rebuilding the standard library*][rebuilding-the-standard-library]
 
@@ -2297,21 +2303,23 @@ with a configuration that are compatible with the host toolchain's Cargo and
 rustc. There is little advantage to using a custom standard library with
 procedural macros or build scripts, as they are not part of the final output
 artifact and anywhere they can run already have a toolchain with host tools and
-a pre-built standard library.
+a pre-built standard library. Procedural macros must link against the compiler
+which further limits potential use cases to those without `target-modifiers`.
 
 See also
 [*Why not support implicit or explicit standard library dependencies in `build-dependencies`?*][rationale-no-deps-in-build-deps]
 
 ↩ [*Rebuilding the standard library*][rebuilding-the-standard-library]
 
-### Why default to assuming the pre-built standard library is the release profile? 
+### Why default to assuming the pre-built standard library is the release profile?
 [rationale-assume-release-profile]: #why-default-to-assuming-the-pre-built-standard-library-is-the-release-profile
 
-The pre-built standard library is built in the release profile. As Cargo will be
-able to read and observe the definition of this profile in the standard library
-and its workspace's `Cargo.toml`, assuming that the pre-built artifact matches
-this is a lightweight and best-effort mechanism to determine when a rebuild of
-the standard library is necessary.
+The pre-built standard library is built in the release profile, with minor
+overrides to the default profile set in the standard library's workspace. As
+Cargo will be able to read and observe the definition of this profile in the
+standard library and its workspace's `Cargo.toml`, assuming that the pre-built
+artifact matches this is a lightweight and best-effort mechanism to determine
+when a rebuild of the standard library is necessary.
 
 This mechanism is unfortunately somewhat fuzzy and is a lightweight and
 best-effort mechanism of avoiding unnecessary rebuilds of the standard library.
@@ -2328,10 +2336,10 @@ differ from those used with the rlib.
 
 As the default configuration for `build-std` is `target-modifiers`, debug builds
 of the user's crate would not trigger a rebuild of the standard library and
-would use the pre-built standard library (as the release profile does not change
-any target modifiers compared to the debug profile). It would only be when
-`build-std = "always"` that any debug build would first trigger a rebuild of the
-standard library.
+would use the pre-built standard library (as the default release profile does
+not change any target modifiers compared to the default debug profile). It would
+only be when `build-std = "always"` that any debug build would first trigger a
+rebuild of the standard library.
 
 To improve the user experience in this circumstance, it could be worth shipping
 a debug profile `rust-std`, but as this is not the common case, it isn't
@@ -2354,7 +2362,7 @@ defined in bootstrap is entirely opaque to Cargo.
 While it is a divergence from other dependencies to respect the profile of the
 standard library crates, when the standard library is rebuilt, the newly-built
 standard library will deviate as little as possible from the pre-built standard
-library (ideally only in those flags/configuration which triggered the rebuild).
+library.
 
 ↩ [*Profiles*][profiles]
 
@@ -2609,6 +2617,9 @@ the format are desirable prior to broader use.
 
 This would require the library team be comfortable with the features declared on
 the standard library being part of the stable interface of the standard library.
+
+The behaviour of disabling default features has been highlighted as a potential
+cause of breaking changes.
 
 Alternatively, this could be enabled alongside another proposal which would
 allow the standard library to define some features as stable and others as
@@ -3032,7 +3043,7 @@ This section contains all of the sources related to [rfcs#2663]:
         `default-features = false` and this should be resolved as it has
         implications for the standard library's development
         - It was suggested that `default-features = false` could be prohibited
-          for standard library dependencies 
+          for standard library dependencies
   - Ultimately closed with interested parties directed to the
     [wg-cargo-std-aware] repository
   - There was additional feedback in the draft version of the RFC which was
@@ -3173,7 +3184,7 @@ build-std:
   - Closed as duplicate of [wg-cargo-std-aware#7]
 
 ### Support for build-std in Cargo's subcommands
-[support-for-build-std-in-cargo-subcommands]: #support-for-build-std-in-cargos-subcommands 
+[support-for-build-std-in-cargo-subcommands]: #support-for-build-std-in-cargos-subcommands
 
 These issues discuss the complexity involved in supporting build-std in specific
 subcommands of Cargo:
@@ -4229,7 +4240,7 @@ general feature for Cargo that could then apply to build-std too:
 [cargo-logout]: https://doc.rust-lang.org/cargo/commands/cargo-login.html
 [cargo-metadata]: https://doc.rust-lang.org/cargo/commands/cargo-metadata.html
 [cargo-miri]: https://doc.rust-lang.org/cargo/commands/cargo-miri.html
-[cargo-new]: https://doc.rust-lang.org/cargo/commands/cargo-new.html 
+[cargo-new]: https://doc.rust-lang.org/cargo/commands/cargo-new.html
 [cargo-owner]: https://doc.rust-lang.org/cargo/commands/cargo-owner.html
 [cargo-package]: https://doc.rust-lang.org/cargo/commands/cargo-package.html
 [cargo-pkgid]: https://doc.rust-lang.org/cargo/commands/cargo-pkgid.html
