@@ -1805,7 +1805,7 @@ build-std has no implications for the following Cargo subcommands:
 - [`cargo version`][cargo-version]
 - [`cargo yank`][cargo-yank]
 
-## Cargo implemenation changes
+## Cargo API changes
 [cargo-changes]: #cargo-changes
 
 ### Registry index JSON
