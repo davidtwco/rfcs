@@ -211,6 +211,24 @@ dependencies:
   ([`build.sanitizers`][bootstrap-sanitizers]) and they are
   included in the rustup components shipped by the project.
 
+## Registries
+
+As per [Cargo's documentation][cargo-docs-registry], "registries are central
+locations where packages can be uploaded to, discovered, and searched for."
+One example of a registry is `crates.io`, but third party registries exist as
+well as support for registries on local file systems. Given a crate that can be
+found on a registry, Cargo expects to find all its dependencies on this registry
+or on a registry which may be found at a different URL.
+
+As an optimisation, Cargo queries the Index of a registry for package
+information including the package names and versions available and what the
+dependencies for each version are. Inside a directory hierarchy exists one file
+for each package, containing a [JSON object][cargo-json-schema] on each line for
+each version availble. Many keys in the schema are reminiscent of the keys in
+`Cargo.toml` files. As a whole the index contains enough information for Cargo's
+resolver to resolve a dependency graph without downloading the entire registry
+or parsing `Cargo.toml` files.
+
 ### Features
 [background-features]: #features
 
@@ -1008,10 +1026,42 @@ std = { builtin = true }
 core = { builtin = true }
 ```
 
-Standard library dependencies cannot be renamed.
+Standard library dependencies can be marked as `optional` and be enabled
+conditionally by a feature in the crate:
+
+```toml
+[package]
+name = "hello_world"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+std = { builtin = true, optional = true }
+core = { builtin = true }
+
+[features]
+default = ["std"]
+std = ["dep:std"]
+```
+
+If there is an optional dependency on the standard library then there must be at
+least one non-optional dependency on the standard library (e.g. an optional
+`std` and non-optional `core` or `alloc`, or an optional `alloc` and
+non-optional `core`). `core` cannot be optional.
+
+Dependencies with `builtin = true` cannot be renamed with the `package` key, or
+use the `registry` or `version` keys.
+
+Dependencies with `builtin = true` can be specified as platform-specific
+dependencies:
+
+```toml
+[target.'cfg(unix)'.dependencies]
+std = { builtin = true}
+```
 
 Implicit and explicit standard library dependencies are added to `Cargo.lock`
-([?][rationale-cargo-lock]).
+files ([?][rationale-cargo-lock]).
 
 *See the following sections for rationale/alternatives:*
 
@@ -1025,7 +1075,7 @@ Implicit and explicit standard library dependencies are added to `Cargo.lock`
 
 - [*What syntax is used to identify dependencies on the standard library in `Cargo.toml`?*][unresolved-dep-syntax]
 
-## Non-`builtin` standard library dependencies
+### Non-`builtin` standard library dependencies
 [non-builtin-standard-library-dependencies]: #non-builtin-standard-library-dependencies
 
 Cargo already supports `path` and `git` dependencies for crates named `core`,
@@ -1058,28 +1108,6 @@ core = { builtin = true }
 As before, crates with `path`/`git` dependencies for `core`, `alloc` or `std`
 are not accepted by crates.io.
 
-Standard library dependencies can be marked as `optional` and be enabled
-conditionally by a feature in the crate:
-
-```toml
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-std = { builtin = true, optional = true }
-core = { builtin = true }
-
-[features]
-default = ["std"]
-std = ["dep:std"]
-```
-
-If there is an optional dependency on the standard library then there must be at
-least one non-optional dependency on the standard library (e.g. an optional
-`std` and non-optional `core` or `alloc`, or an optional `alloc` and
-non-optional `core`). `core` cannot be optional.
 
 ### Patches
 [patches]: #patches
@@ -1200,6 +1228,57 @@ Implicit and explicit dependencies on the standard library are supported for
 `dev-dependencies` in the same way as regular `dependencies`. An additional
 implicit dependency on the `test` crate is added for `dev-dependencies`.
 `test = { builtin = true }` can also be written explicitly.
+
+### Registry index JSON
+[registry-index-json]: #registry-index-json
+
+A new key is added to the [JSON schema][cargo-json-schema], named `builtin_deps`
+([?][rationale-cargo-builtindeps]). This key
+is conceptually similar to `deps` and its type is a list of JSON objects, each
+representing a dependency that is "builtin" to the Rust toolchain and cannot be
+found in the registry. The keys of these objects are as follows:
+
+- `name`:
+  The `builtin` package name, which can shadow the names of other packages in
+  the registry (but not other `deps`) ([?][rationale-cargo-index-shadowing])
+- `features`:
+  An array of strings representing enabled features in order to support changing
+  the standard library features on nightly. Optional, and an empty array is the
+  default value.
+- `optional`, `default_features`, `target`, `kind`:
+  These keys are inherited from `deps`, with the same definition.
+
+The following keys from `deps` are not required:
+
+- `req`:
+  All standard library packages have a version of `0.0.0`, meaning this key no
+  longer has a purpose. Equivalent behaviour is handled by the `rust_version`
+  key which represents the minimum supported Rust version and allows resolvers
+  with support for the key to not choose packages that do not support the
+  current toolchain version.
+- `registry`:
+  Not required as all deps are provided by the toolchain rather than a registry.
+- `package`:
+  Not required as `builtin` dependencies cannot be renamed
+
+The key is optional and its default value will be the implicit `std` dependency:
+
+```json
+"builtin_deps" : [
+    {
+        "name": "std",
+        "features": [],
+        "optional": false,
+        "default_features": true,
+        "target": null,
+        "kind": "normal",
+    }
+]
+```
+
+- [*Why add standard library crates to Cargo's index?*][rationale-cargo-index]
+- [*Why add a new key to Cargo's registry index JSON schema?*][rationale-cargo-builtindeps]
+- [*Why can builtin_deps shadow other packages in the registry?*][rationale-cargo-index-shadowing]
 
 ## Rebuilding the standard library
 [rebuilding-the-standard-library]: #rebuilding-the-standard-library
@@ -1805,71 +1884,6 @@ build-std has no implications for the following Cargo subcommands:
 - [`cargo version`][cargo-version]
 - [`cargo yank`][cargo-yank]
 
-## Cargo API changes
-[cargo-changes]: #cargo-changes
-
-### Registry index JSON
-[registry-index-json]: #registry-index-json
-
-A new key is added to the [JSON schema][cargo-json-schema], named `builtin_deps`. This key
-is conceptually similar to `deps` and its type is a list of JSON objects, each
-representing a dependency that is "builtin" to the Rust toolchain and cannot be
-found in the registry. The keys of these objects are as follows:
-
-- `name`:
-  The `builtin` package name. The name can shadow other packages in the
-  registry, which is required as standard library crates are technically not
-  disallowed on third-party registries, though `crates.io` forbids it.
-- `features`:
-  An array of strings representing enabled features in order to support changing
-  the standard library features on nightly. crates.io should disallow setting
-  this to anything but an empty array. Optional, and an empty array is the
-  default value.
-- `default_features`:
-  Inherited from `deps` with the same definition. crates.io should disallow
-  setting this to anything except the default `true`.
-- `optional`, `target`, `kind`, `package`:
-  These keys are inherited from `deps`, with the same definition.
-
-The following keys from `deps` are not required:
-
-- `req`:
-  All standard library packages have a version of `0.0.0`, meaning this key no
-  longer has a purpose. Compatibility with older versions of the Rust toolchain
-  is managed by the `rust_version` key in the JSON schema.
-- `registry`:
-  Not required as all deps are provided by the toolchain rather than a registry.
-
-Older versions of Cargo will ignore any `builtin_deps` keys and continue to
-function even if newer crates are released with some defined. The key is
-optional and its default value will be the implicit `std` dependency:
-
-```json
-"builtin_deps" : [
-    {
-        "name": "std",
-        "features": [],
-        "optional": false,
-        "default_features": true,
-        "target": null,
-        "kind": "normal",
-        "package": null
-    }
-]
-```
-
-- [*Why add standard library crates to Cargo's index?*][rationale-cargo-index]
-
-### Cargo-util-schemas
-[cargo-util-schemas]: #cargo-util-schemas
-
-In order to model builtin packages that may not need to be built from source a
-new [`SourceKind`][cargo-sourcekind] variant will be added, named `PreBuilt`.
-This extends the use of `SourceKind` to refer to something that isn't source
-code, and likewise for types that use it such as [`SourceId`][cargo-sourceid].
-
-- [*Why modify cargo-util-schema definitions?*][rationale-cargo-util-schema]
-
 ## Constraints on the standard library, compiler and bootstrap
 [constraints-on-the-standard-library]: #constraints-on-the-standard-library-compiler-and-bootstrap
 
@@ -2126,33 +2140,6 @@ resolution to fill in missing `builtin` packages.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
-### Why add standard library crates to Cargo's index?
-[rationale-cargo-index]: #why-add-standard-library-crates-to-cargos-index
-
-When Cargo builds the dependency graph, it is driven by the index (not
-`Cargo.toml`), so builtin dependencies need to be included in the index.
-
-Even if a `builtin` package can be unambiguously represented as an entry in
-the `deps` key, older versions of Cargo expect to find packages either in the
-current registry or at the URL under the `registry` key. This could cause them
-to fail upon encountering a `builtin` package not in a registry. Adding "dummy"
-`builtin` packages to every registry (named after `std`, `alloc` and `core`,
-which are not permitted names on `crates.io`) to registries would not work as
-they would be passed into `rustc` build invocations via `extern`, preventing
-loading the real crates from the sysroot.
-
-↩ [*Registry index JSON*][registry-index-json]
-
-### Why modify cargo-util-schema definitions?
-[rationale-cargo-util-schema]: #why-modify-cargo-util-schema-definitions
-
-Dependencies specified as `builtin` cannot currently be represented in Cargo's
-`cargo-util-schemas`. In particular, no [`SourceKind`][cargo-sourcekind] variant
-can represent the prebuilt binaries of `builtin` dependencies in the sysroot,
-which is required to uniquely identify a package with a [`PackageIdSpec`][cargo-packageidspec].
-
-↩ [*Cargo-util-schemas*][cargo-util-schemas]
-
 ### Why permit patching of the standard library dependencies on nightly?
 [rationale-patching]: #why-permit-patching-of-the-standard-library-dependencies-on-nightly
 
@@ -2211,6 +2198,74 @@ See also
 [*Why use the pre-built standard library for procedural macros and build-scripts?*][rationale-sysroot-for-host-deps].
 
 ↩ [*`dev-dependencies` and `build-dependencies`*][dev-dependencies-and-build-dependencies]
+
+### Why add standard library crates to Cargo's index?
+[rationale-cargo-index]: #why-add-standard-library-crates-to-cargos-index
+
+When Cargo builds the dependency graph, it is driven by the index (not
+`Cargo.toml`), so builtin dependencies need to be included in the index.
+
+↩ [*Registry index JSON*][registry-index-json]
+
+### Why add a new key to Cargo's registry index JSON schema?
+[rationale-cargo-builtindeps]: #why-add-a-new-key-to-cargos-registry-index-json-schema
+
+Cargo's [registry index schema][cargo-json-schema] cannot make breaking changes
+to its structure without incrementing its `v` key, representing the version of
+the schema. Packages are published under one particular version of the schema,
+meaning that older versions of Cargo cannot use newer versions of packages which
+are defined using a schema it does not have knowledge of. There are currently
+3 versions of the schema:
+
+- 1: added in 1.0
+- 2: added the `features2` field to support newer features syntax, partially
+  taking responsibility of feature lists from `features`. Added to `v` key to
+  support schema versions
+- 3: added `artifact`, `bindep_target` and `lib` keys to `deps` to support
+  artifact dependencies
+
+Cargo ignores packages published under an unsupported schema version, so older
+versions of Cargo cannot use newer versions of packages relying on these
+features. This means that a new schema version is disruptive to users on older
+toolchains and should be avoided where possible.
+
+Some new fields, including `rust-version`, were added to all versions of the
+schema. Cargo ignores fields it does not have knowledge of, so older versions of
+Cargo will simply not use `rust-version` and its presence does not change their
+behaviour.
+
+In a similar sense, current and older versions of Cargo already function
+correctly without knowledge of crate's standard library dependencies. A new top-
+level key will be ignored by older versions of Cargo, while newer versions will
+process it and combine it with the `deps` key. This is distinct to the changes
+required for artifact dependencies in version 3, which do not have a suitable
+representation in older versions of Cargo.
+
+A possible alternative to `builtin_deps` could be to modify `deps` entries with
+a new `builtin: bool` field, similar to the keys added in version 3. These
+entries would not be processed correctly by older versions of Cargo which would
+look in the registry to find these packages and fail. These packages could be
+found if dummy versions of builtin dependencies were added to registries,
+perhaps whenever publishing a package with a `builtin` dependencies, but older
+versions of Cargo would pass these to `rustc` via `--extern` and shadow the real
+standard library dependencies in the sysroot. This approach is valid with a new
+version of the schema, but as discussed above this limits older versions of
+Cargo to packages without a `builtin` dependency specified.
+
+↩ [*Registry index JSON*][registry-index-json]
+
+### Why can builtin_deps shadow other packages in the registry?
+[rationale-cargo-index-shadowing]: #why-can-builtin_deps-shadow-other-packages-in-the-registry
+
+While `crates.io` forbids certain crate names including `std`, `alloc` and
+`core`, third party registries may allow it without a warning. The schema needs
+a way to refer to packages with the same name either in the registry or builtin,
+which `builtin_deps` allows.
+
+`builtin_deps` names are not allowed to shadow names of packages in `deps` as
+these would conflict when passed to `rustc` via `--extern`.
+
+↩ [*Registry index JSON*][registry-index-json]
 
 ## Rebuilding the standard library
 [rationale-rebuilding-the-standard-library]: #rebuilding-the-standard-library-1
@@ -4289,10 +4344,8 @@ general feature for Cargo that could then apply to build-std too:
 [bootstrap-sanitizers]: https://github.com/rust-lang/rust/blob/d13a431a6cc69cd65efe7c3eb7808251d6fd7a46/bootstrap.example.toml#L388
 [build-std-features]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std-features
 [build-std]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
+[cargo-docs-registry]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo/sources/registry/index.html
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
-[cargo-packageidspec]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo_util_schemas/core/struct.PackageIdSpec.html
-[cargo-sourcekind]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo_util_schemas/core/source_kind/enum.SourceKind.html
-[cargo-sourceid]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo/core/struct.SourceId.html
 [conditional-compilation-config-options]: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 [embed-rs-cargo-toml]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/Cargo.toml#L21
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
