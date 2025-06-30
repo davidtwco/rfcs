@@ -161,7 +161,9 @@ This is the mechanism by which every crate has an implicit dependency on the
 standard library.
 
 The standard library sources are distributed in the `rust-src` component by
-rustup and placed in the sysroot under `lib/rustlib/src/`.
+rustup and placed in the sysroot under `lib/rustlib/src/`. The sources consist
+of the `library/` workspace plus `src/llvm-project/libunwind`, which was
+required in the past to build the `unwind` crate on some targets.
 
 Cargo supports explicitly declaring a dependency on the standard library with
 a `path` source (e.g. `core = { path = "../my_core" }`), but crates with these
@@ -223,11 +225,12 @@ or on a registry which may be found at a different URL.
 As an optimisation, Cargo queries the Index of a registry for package
 information including the package names and versions available and what the
 dependencies for each version are. Inside a directory hierarchy exists one file
-for each package, containing a [JSON object][cargo-json-schema] on each line for
-each version availble. Many keys in the schema are reminiscent of the keys in
+for each package containing a [JSON object][cargo-json-schema] on each line for
+each version available. Many keys in the schema are reminiscent of the keys in
 `Cargo.toml` files. As a whole the index contains enough information for Cargo's
 resolver to resolve a dependency graph without downloading the entire registry
-or parsing `Cargo.toml` files.
+or parsing `Cargo.toml` files. The registry may refer to packages in other
+registries, but all packages in the dependency graph must exist in a registry.
 
 ### Features
 [background-features]: #features
@@ -259,11 +262,13 @@ or `core`, only `std`.
 
 Cargo and rustc support custom targets, defined in JSON files according to an
 unstable schema defined in the compiler. On nightly, users can dump the
-target-spec-json for an existing target using `--print target-spec-json`, which
-can be saved in a file, tweaked and used as the argument to `--target`. Custom
-targets do not have a pre-built standard library and so must use `-Zbuild-std`.
-Custom targets can have `restricted_std` set depending on their value of the
-"os" part of the triple, just as built-in targets.
+target-spec-json for an existing target using `--print target-spec-json`. This
+JSON can be saved in a file, tweaked and used as the argument to `--target` even
+on stable toolchains, though the Rust project does not officially support them
+and the JSON format is itself unstable. Custom targets do not have a pre-built
+standard library and so must use `-Zbuild-std`. Custom targets may have
+`restricted_std` set depending on their `cfg` configuration options - generally
+speaking depending on how similar they are to builtin targets.
 
 ## Panic strategies
 [background-panic-strategies]: #panic-strategies
@@ -941,7 +946,7 @@ and will emit an error ([?][rationale-disallow-custom-targets]).
 > or by checking if a file exists at the path matching the provided target name.
 
 Custom targets can still be used with build-std on nightly toolchains provided
-that `-Zunstable-options` is provided.
+that `-Zunstable-options` is provided to Cargo.
 
 *See the following sections for rationale/alternatives:*
 
@@ -1050,7 +1055,7 @@ least one non-optional dependency on the standard library (e.g. an optional
 non-optional `core`). `core` cannot be optional.
 
 Dependencies with `builtin = true` cannot be renamed with the `package` key, or
-use the `registry` or `version` keys.
+use the `registry` or `version` ([?][rationale-version-key]) keys.
 
 Dependencies with `builtin = true` can be specified as platform-specific
 dependencies:
@@ -1248,18 +1253,9 @@ found in the registry. The keys of these objects are as follows:
 - `optional`, `default_features`, `target`, `kind`:
   These keys are inherited from `deps`, with the same definition.
 
-The following keys from `deps` are not required:
-
-- `req`:
-  All standard library packages have a version of `0.0.0`, meaning this key no
-  longer has a purpose. Equivalent behaviour is handled by the `rust_version`
-  key which represents the minimum supported Rust version and allows resolvers
-  with support for the key to not choose packages that do not support the
-  current toolchain version.
-- `registry`:
-  Not required as all deps are provided by the toolchain rather than a registry.
-- `package`:
-  Not required as `builtin` dependencies cannot be renamed
+The keys `req`, `registry` and `package` from `deps` are not required as their
+counterparts in the `Cargo.toml` are not allowed as keys for `builtin = true`
+dependencies.
 
 The key is optional and its default value will be the implicit `std` dependency:
 
@@ -1284,8 +1280,8 @@ The key is optional and its default value will be the implicit `std` dependency:
 [rebuilding-the-standard-library]: #rebuilding-the-standard-library
 
 Cargo configuration will contain a new key `build-std` under the `[profile]`
-section, permitting one of three values - "off", "target-modifiers" or
-"match-profile" ([?][rationale-build-std-in-config]):
+section ([?][rationale-build-std-in-config]), permitting one of three values -
+"off" ([?][rationale-build-std-off]), "target-modifiers" or "match-profile" :
 
 ```toml
 [profile.dev]
@@ -2131,6 +2127,29 @@ issue and is true of any RFC adding to what can be written in `Cargo.toml`.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
+### Why disallow builtin dependencies to have the version key?
+[rationale-version-key]: #why-disallow-builtin-dependencies-to-have-the-version-key
+
+Usually the `version` key means the dependency refers to a package sourced from
+`crates.io`. It is also permitted for `git`/`path` dependencies, in which
+case Cargo will check the requirement against the local package and also permit
+uploading the package to `crates.io` where it will exclusively source the
+dependency from `crates.io`.
+
+The key is a poor fit for `builtin` dependencies for a number of reasons:
+
+- The `std`, `alloc` and `core` crates all have a package version of `0.0.0`
+- `Builtin` crates are part of the toolchain, so Cargo has no ability to choose
+  different versions of them
+- Choosing different version requirements for different `builtin` crates has no
+  purpose
+
+Equivalent behaviour is handled by the `rust-version` key (which represents the
+minimum supported Rust version) and allows resolvers with support for the key to
+avoid choosing packages that do not support the current toolchain version.
+
+↩ [*Standard library dependencies*][standard-library-dependencies]
+
 ### Why add standard library dependencies to `Cargo.lock`?
 [rationale-cargo-lock]: #why-add-standard-library-dependencies-to-cargolock
 
@@ -2292,6 +2311,19 @@ It also seems to be true that the standard library features currently available
 should also be controlled by the top-level user rather than set by dependencies
 and resolved together, which suggests that Cargo features may not be the correct
 mechanism for configuring the standard library.
+
+↩ [*Rebuilding the standard library*][rebuilding-the-standard-library]
+
+### Why accept `off` as a value for `build-std`?
+[rationale-build-std-off]: #why-accept-off-as-a-value-for-build-std
+
+While not a default value, the user can specify `off` if they prefer which will
+never rebuild the standard library. `rustc` will still return an error when the
+user's target-modifiers do not match the prebuilt standard library.
+
+The `off` value is useful particularly for qualified toolchains where rebuilding
+the standard library may invalidate the testing that the qualified toolchain has
+undergone.
 
 ↩ [*Rebuilding the standard library*][rebuilding-the-standard-library]
 
@@ -2596,18 +2628,28 @@ Vendoring the standard library's dependencies has multiple advantages..
 - Avoid needing to support standard library dependencies in `cargo fetch`
 - Re-building the standard library does not require an internet connection
 - Standard library dependency versions are fixed to those in the `Cargo.lock`
-  anyway, so the same versions would be being downloaded every time if not
-  vendored
+  anyway, so initial builds with `build-std` start quicker with these
+  dependencies already available
+- Allow build-std to continue functioning if a `crates.io` dependency is
+  "yanked"
+  - This leaves the consequences of a toolchain version using yanked
+    dependencies the same as without this RFC
 
 ..and few disadvantages:
 
 - A larger `rust-src` component takes up more disk space and takes longer to
   download
-    - If using build-std, these dependencies would have to be downloaded anyway,
-      so this is only an issue if build-std is not used and `rust-src` is
-      downloaded
+  - If using build-std, these dependencies would have to be downloaded at build
+    time, so this is only an issue if build-std is not used and `rust-src` is
+    downloaded.
 - Vendored dependencies can't be updated with the latest security fixes
   - This is no different than the pre-built standard library
+
+How this affects `crates.io`/`rustup` bandwidth usage or user time spent
+downloading these crates is unclear and depends on user patterns. If not
+vendored, Cargo will "lazily" download them the first time `build-std` is used
+but this may happen multiple times if they are cleaned from its cache without
+upgrading the toolchain version.
 
 See
 [*Why use the lockfile of the `rust-src` component?*][why-use-the-lockfile-of-the-rust-src-component]
@@ -2786,6 +2828,7 @@ There are many features proposed in this RFC for different parts of the project:
 - Compiler
   - [`--no-implicit-sysroot-deps`][preventing-implicit-sysroot-dependencies]
   - [Loading `panic_unwind` from `-L dependency=`][rebuilding-the-standard-library]
+  - [`--print target-standard-library-support`][target-standard-library-support]
 - Cargo
   - [Standard library dependencies][standard-library-dependencies]
   - [Rebuilding the standard library][rebuilding-the-standard-library]
