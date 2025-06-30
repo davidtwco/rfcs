@@ -213,25 +213,6 @@ dependencies:
   ([`build.sanitizers`][bootstrap-sanitizers]) and they are
   included in the rustup components shipped by the project.
 
-## Registries
-
-As per [Cargo's documentation][cargo-docs-registry], "registries are central
-locations where packages can be uploaded to, discovered, and searched for."
-One example of a registry is `crates.io`, but third party registries exist as
-well as support for registries on local file systems. Given a crate that can be
-found on a registry, Cargo expects to find all its dependencies on this registry
-or on a registry which may be found at a different URL.
-
-As an optimisation, Cargo queries the Index of a registry for package
-information including the package names and versions available and what the
-dependencies for each version are. Inside a directory hierarchy exists one file
-for each package containing a [JSON object][cargo-json-schema] on each line for
-each version available. Many keys in the schema are reminiscent of the keys in
-`Cargo.toml` files. As a whole the index contains enough information for Cargo's
-resolver to resolve a dependency graph without downloading the entire registry
-or parsing `Cargo.toml` files. The registry may refer to packages in other
-registries, but all packages in the dependency graph must exist in a registry.
-
 ### Features
 [background-features]: #features
 
@@ -269,6 +250,29 @@ and the JSON format is itself unstable. Custom targets do not have a pre-built
 standard library and so must use `-Zbuild-std`. Custom targets may have
 `restricted_std` set depending on their `cfg` configuration options - generally
 speaking depending on how similar they are to builtin targets.
+
+## Registries
+[background-registries]: #registries
+
+As per [Cargo's documentation][cargo-docs-registry], "registries are central
+locations where packages can be uploaded to, discovered, and searched for."
+One example of a registry is `crates.io`, but third party registries exist as
+well as support for registries on local file systems. Given a crate that can be
+found on a registry, Cargo expects to find all its dependencies on this registry
+or on a registry which may be found at a different URL. As a consequence
+registries do not accept packages with a dependency that does not have a
+`version` source.
+
+As an optimisation, Cargo queries the Index of a registry rather than the whole
+registry for package information including the package names and versions
+available, and what the dependencies for each version are. Inside a directory
+hierarchy exists one file for each package containing a
+[JSON object][cargo-json-schema] on each line for each version available. Many
+keys in the schema are reminiscent of the keys in `Cargo.toml` files. As a whole
+the index contains enough information for Cargo's resolver to resolve a
+dependency graph without downloading the entire registry or parsing `Cargo.toml`
+files. The registry may refer to packages in other registries, but all packages
+in the dependency graph must exist in a registry.
 
 ## Panic strategies
 [background-panic-strategies]: #panic-strategies
@@ -991,8 +995,8 @@ core = { builtin = true }
 
 crates.io will accept crates published which have `builtin` dependencies.
 
-Crates without an explicit dependency on the standard library now has a implicit
-dependency on the `std` crate ([?][rationale-no-migration]). In the
+Crates without an explicit dependency on the standard library now have a
+implicit dependency on the `std` crate ([?][rationale-no-migration]). In the
 `hello_world` crate below, there is an implicit dependency on `std`..
 
 ```toml
@@ -1054,8 +1058,8 @@ least one non-optional dependency on the standard library (e.g. an optional
 `std` and non-optional `core` or `alloc`, or an optional `alloc` and
 non-optional `core`). `core` cannot be optional.
 
-Dependencies with `builtin = true` cannot be renamed with the `package` key, or
-use the `registry` or `version` ([?][rationale-version-key]) keys.
+Dependencies with `builtin = true` cannot be renamed with the `package` key
+([?][rationale-package-key]) or use the `registry` key.
 
 Dependencies with `builtin = true` can be specified as platform-specific
 dependencies:
@@ -1066,7 +1070,9 @@ std = { builtin = true}
 ```
 
 Implicit and explicit standard library dependencies are added to `Cargo.lock`
-files ([?][rationale-cargo-lock]).
+files ([?][rationale-cargo-lock]). This likely necessitates a new lockfile
+version in order for Cargo to find `builtin` dependencies in the same lockfile
+and to process `builtin` sources correctly.
 
 *See the following sections for rationale/alternatives:*
 
@@ -1096,8 +1102,8 @@ edition = "2024"
 std = { path = "../my_std" } # already supported by Cargo
 ```
 
-`path`/`git` dependencies for `core`/`alloc`/`std` can be combined with
-`builtin` dependencies:
+A `core`/`alloc`/`std` dependency with a `path`/`git` source can be combined
+with `builtin` dependencies:
 
 ```toml
 [package]
@@ -2022,8 +2028,9 @@ more usable on stable toolchains.
 
 In order to avoid users relying on the [unstable target-spec-json][rust#71009] format on a
 stable toolchain, using custom targets with build-std on a stable toolchain is
-disallowed until another RFC can consider all the implications of this
-thoroughly.
+disallowed by Cargo until another RFC can consider all the implications of this
+thoroughly. The idea of `rustc` disallowing custom targets on stable is covered
+in [rust#71009].
 
 ↩ [*Custom targets*][custom-targets]
 
@@ -2081,6 +2088,18 @@ This is not desirable as it is unclear that supporting `path`/`git` sources
 which shadow standard library crates was a deliberate choice and so enabling
 that pattern to be used more widely when not necessary is needlessly permissive.
 
+When combined with a `git`/`path` source, the `version` key will also check the
+requirement against the version of the local package. This behaviour of the key
+is a poor fit for `builtin` dependencies for a number of reasons:
+
+- The `std`, `alloc` and `core` crates all currently have a version of `0.0.0`
+- Choosing different version requirements for different `builtin` crates has no
+  purpose
+
+Equivalent behaviour is handled by the `rust-version` key (which represents the
+minimum supported Rust version) and allows resolvers with support for the key to
+avoid choosing packages that do not support the current toolchain version.
+
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
 ### Why disallow builtin dependencies on other crates?
@@ -2127,26 +2146,17 @@ issue and is true of any RFC adding to what can be written in `Cargo.toml`.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
-### Why disallow builtin dependencies to have the version key?
-[rationale-version-key]: #why-disallow-builtin-dependencies-to-have-the-version-key
+### Why disallow renaming standard library dependencies?
+[rationale-package-key]: #why-disallow-renaming-standard-library-dependencies
 
-Usually the `version` key means the dependency refers to a package sourced from
-`crates.io`. It is also permitted for `git`/`path` dependencies, in which
-case Cargo will check the requirement against the local package and also permit
-uploading the package to `crates.io` where it will exclusively source the
-dependency from `crates.io`.
+Cargo allows [renaming dependencies][cargo-docs-renaming] with the `package`
+key, which allows user code to refer to dependencies by names which do not
+match their `package` name in their respective `Cargo.toml` files.
 
-The key is a poor fit for `builtin` dependencies for a number of reasons:
-
-- The `std`, `alloc` and `core` crates all have a package version of `0.0.0`
-- `Builtin` crates are part of the toolchain, so Cargo has no ability to choose
-  different versions of them
-- Choosing different version requirements for different `builtin` crates has no
-  purpose
-
-Equivalent behaviour is handled by the `rust-version` key (which represents the
-minimum supported Rust version) and allows resolvers with support for the key to
-avoid choosing packages that do not support the current toolchain version.
+However, `rustc` expects the standard library crates to be present with their
+existing names - for example, `core` is always added to the [extern prelude][rust-extern-prelude].
+This feature would not work without a way to tell `rustc` the new names of
+`builtin` crates.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
@@ -4388,10 +4398,12 @@ general feature for Cargo that could then apply to build-std too:
 [build-std-features]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std-features
 [build-std]: https://doc.rust-lang.org/cargo/reference/unstable.html#build-std
 [cargo-docs-registry]: https://doc.rust-lang.org/nightly/nightly-rustc/cargo/sources/registry/index.html
+[cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
 [conditional-compilation-config-options]: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 [embed-rs-cargo-toml]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/Cargo.toml#L21
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
+[rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
 [sgx]: https://github.com/apache/incubator-teaclave-sgx-sdk
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
 [std-unsupported]: https://github.com/rust-lang/rust/blob/f768dc01da9a681716724418ccf64ce55bd396c5/library/std/src/sys/pal/mod.rs#L68-L69
