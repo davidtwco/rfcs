@@ -32,7 +32,7 @@ these rules to keep it consistent:
 [summary]: #summary
 
 While Rust's pre-built standard library has proven itself sufficient for the
-majority of Rust uses, there are a handful of use cases that are not well
+majority of use cases, there are a handful of use cases that are not well
 supported:
 
 1. Rebuilding the standard library to match the user's profile
@@ -68,10 +68,12 @@ discussion that this RFC has.
 [acknowledgements]: #acknowledgements
 
 This RFC would not have been possible without the advice, feedback and support
-of [Josh Triplett][joshtriplett], [Eric Huss][ehuss] and
-[Wesley Wiser][wesleywiser]. Thanks to [mati865][mati865] for advising on some
-of the specifics related to special object files and to [Ed Page][epage] for
-writing about opaque dependencies.
+of [Josh Triplett][joshtriplett], [Eric Huss][ehuss],
+[Wesley Wiser][wesleywiser] and [Tomas Sedovic][tomassedovic]. Thanks to
+[mati865][mati865] for advising on some of the specifics related to special
+object files, [petrochenkov][petrochenkov] for his expertise on rustc's
+dependency loading and name resolution and to [Ed Page][epage] for writing about
+opaque dependencies.
 
 ### Terminology
 [terminology]: #terminology
@@ -84,15 +86,17 @@ The following terminology is used throughout the RFC:
   library
 
 Throughout the RFC's [*Detailed explanation*][detailed-explanation],
-parentheticals with "?" will be present that link to the relevant section in the
-[*Rationale and alternatives*][rationale-and-alternatives].
+parentheticals with "?" links will be present that which connect the relevant
+section in the [*Rationale and alternatives*][rationale-and-alternatives] to
+justify a decision or provide alternatives to it.
 
 Additionally, "note alerts" will be used in the
-[*Detailed explanation*][detailed-explanation] to indicate implementation
-detail. Implementation detail should be considered non-normative. These details
-could change during implementation and are present solely to demonstrate that
-the implementation feasibility has been considered and to provide an example of
-how implementation could proceed.
+[*Detailed explanation*][detailed-explanation] section to separate
+implementation considerations from the core proposal. Implementation detail
+should be considered non-normative. These details could change during
+implementation and are present solely to demonstrate that the implementation
+feasibility has been considered and to provide an example of how implementation
+could proceed.
 
 > [!NOTE]
 >
@@ -254,25 +258,26 @@ speaking depending on how similar they are to builtin targets.
 ## Registries
 [background-registries]: #registries
 
-As per [Cargo's documentation][cargo-docs-registry], "registries are central
-locations where packages can be uploaded to, discovered, and searched for."
-One example of a registry is `crates.io`, but third party registries exist as
-well as support for registries on local file systems. Given a crate that can be
-found on a registry, Cargo expects to find all its dependencies on this registry
-or on a registry which may be found at a different URL. As a consequence
-registries do not accept packages with a dependency that does not have a
-`version` source.
+Cargo's building of the dependency graph is driven by the registry index.
+[Cargo registries][cargo-docs-registry], like crates.io, are centralised sources
+for crates. A registry's index is the interface between Cargo and the registry
+that Cargo queries to know which crates are available, what their dependencies
+are, etc. crates.io's registry index is a Git repository -
+[rust-lang/crates.io-index] - which is updated automatically by crates.io when
+crates are published, yanked, etc. Cargo can query registries using a Git
+protocol which caches the registry on disk, or using a sparse protocol which
+exposes the index over HTTP and allows Cargo to avoid Cargo having a local copy
+of the whole index, which has become quite large for crates.io.
 
-As an optimisation, Cargo queries the Index of a registry rather than the whole
-registry for package information including the package names and versions
-available, and what the dependencies for each version are. Inside a directory
-hierarchy exists one file for each package containing a
-[JSON object][cargo-json-schema] on each line for each version available. Many
-keys in the schema are reminiscent of the keys in `Cargo.toml` files. As a whole
-the index contains enough information for Cargo's resolver to resolve a
-dependency graph without downloading the entire registry or parsing `Cargo.toml`
-files. The registry may refer to packages in other registries, but all packages
-in the dependency graph must exist in a registry.
+Each crates in the registry has a JSON file, following
+[a defined schema][cargo-json-schema]. Crates may refer to those in other
+registries, but all crates in the dependency graph must exist in a registry. As
+the registry index drives the building of Cargo's dependency graph, all crates
+that end up in the dependency graph must be present a registry.
+
+Registries can have different policies for what crates are accepted. For
+example, crates.io does not permit publishing packages named `std` or `core` but
+other registries might.
 
 ## Panic strategies
 [background-panic-strategies]: #panic-strategies
@@ -709,7 +714,7 @@ separate workspace from the compiler which could be used independently
 the resolve is combined with the user's resolve to produce a dependency graph of
 things to build with the user's crates depending on the standard library's
 crates. Some additional work is done to deduplicate crates across the graph and
-then this crate graph is used to drive work (usually `rustc` invocations) as
+then this crate graph is used to drive work (usually rustc invocations) as
 usual. This approach allows for build-time parallelism and sharing of crates
 between the two separate resolves but does involve `build-std`-specific logic in
 and around unit generation and is very unlike the rest of Cargo
@@ -726,7 +731,7 @@ The standard library crates are considered non-local packages and so are not
 compiled with incremental compilation or dep-info fingerprint tracking and any
 warnings will be silenced.
 
-build-std provides newly-built standard library dependencies to `rustc` using
+build-std provides newly-built standard library dependencies to rustc using
 `--extern noprelude:$crate`. `noprelude` was added in [rust#67074] to support
 build-std and ensure that loading from the sysroot and using `--extern` were
 equivalent ([wg-cargo-std-aware#40]). Prior to the addition of `noprelude`,
@@ -902,7 +907,7 @@ three standard library crates will be stable on "aarch64-unknown-linux-gnu",
 only `alloc` and `core` will be stable on "x86_64-unknown-none" and only `core`
 will be stable on "mipsel-sony-psx".
 
-The `target-standard-library-support` option will be supported by `rustc`'s
+The `target-standard-library-support` option will be supported by rustc's
 `--print` flag:
 
 ```shell-session
@@ -979,12 +984,14 @@ std = { builtin = true }
 `builtin` is a new source of dependency, like registry dependencies (with the
 `version` key and optionally the `registry` key), `path` dependencies or `git`
 dependencies. `builtin` can only be set to `true` and cannot be combined with
-any other dependency source for a given dependency ([?][rationale-builtin-other-sources]).
-`builtin` can only be used with crates named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]).
+any other dependency source for a given dependency
+([?][rationale-builtin-other-sources]). `builtin` can only be used with crates
+named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]).
 
 An explicit dependency on a `builtin = true` crate implies a direct dependency
-on other `builtin` crates that the crate depends on ([?][rationale-builtin-implied-direct]).
-For example, an explicit dependency on `alloc` like so..
+on other `builtin` crates that the crate depends on
+([?][rationale-builtin-implied-direct]). For example, an explicit dependency on
+`alloc` like so..
 
 ```toml
 [dependencies]
@@ -1080,19 +1087,23 @@ std = { builtin = true}
 ```
 
 Implicit and explicit standard library dependencies are added to `Cargo.lock`
-files ([?][rationale-cargo-lock]). A new lockfile version will be introduced to
-add support for packages with a `builtin` source, like so:
+files ([?][rationale-cargo-lock]). 
 
-```toml
-[[package]]
-name = "std"
-version = "0.0.0"
-source = "builtin"
-```
-
-The package version of `std`, `alloc` and `core` will be fixed at `0.0.0`. The
-optional lockfile fields `dependencies` (which are opaque to the resolver) and
-`checksum` will not be present for `builtin` dependencies.
+> [!NOTE]
+> 
+> A version of the `Cargo.lock` file will be introduced to add support for
+> packages with a `builtin` source:
+>
+> ```toml
+> [[package]]
+> name = "std"
+> version = "0.0.0"
+> source = "builtin"
+> ```
+> 
+> The package version of `std`, `alloc` and `core` will be fixed at `0.0.0`. The
+> optional lockfile fields `dependencies` and `checksum` will not be present for
+> `builtin` dependencies.
 
 *See the following sections for rationale/alternatives:*
 
@@ -1141,7 +1152,6 @@ core = { builtin = true }
 As before, crates with `path`/`git` dependencies for `core`, `alloc` or `std`
 are not accepted by crates.io.
 
-
 ### Patches
 [patches]: #patches
 
@@ -1165,9 +1175,8 @@ std = { .. }
 std = { path = "../libstd" }
 ```
 
-In line with `crates.io`'s policy of not allowing packages with dependencies on
-code published outside of `crates.io`, crates with these dependency sources will
-not be able to be published to crates.io.
+As with any other `path` or `git` dependency, crates with these dependency
+sources will not be able to be published to crates.io.
 
 It is not possible to perform source replacement on standard library
 dependencies using `builtin = true`.
@@ -1237,6 +1246,7 @@ std = { builtin = true, public = true }
 ```
 
 *See the following sections for rationale/alternatives:*
+
 - [*Why default to public for the implicit standard library dependencies?*][rationale-implicit-public]
 - [*Why follow the default privacy of explicit standard library dependencies?*][rationale-explicit-private]
 
@@ -1249,9 +1259,7 @@ standard library can always be present in the `Cargo.toml` of the standard
 library's dependencies.
 
 The `core`, `alloc` and `std` dependencies can be patched in the standard
-library's workspace to point to the local copy of the crates. This avoids
-`crates.io` dependencies needing to add support for `rustc_dep_of_std` before
-the standard library can depend on them.
+library's workspace to point to the local copy of the crates.
 
 ### `dev-dependencies` and `build-dependencies`
 [dev-dependencies-and-build-dependencies]: #dev-dependencies-and-build-dependencies
@@ -1265,28 +1273,35 @@ Implicit and explicit dependencies on the standard library are supported for
 implicit dependency on the `test` crate is added for `dev-dependencies`.
 `test = { builtin = true }` can also be written explicitly.
 
-### Registry index JSON
-[registry-index-json]: #registry-index-json
+### Registries
+[registries]: #registries-1
 
-A new key is added to the [JSON schema][cargo-json-schema], named `builtin_deps`
-([?][rationale-cargo-builtindeps]). This key
-is conceptually similar to `deps` and its type is a list of JSON objects, each
-representing a dependency that is "builtin" to the Rust toolchain and cannot be
-found in the registry. The keys of these objects are as follows:
+Standard library dependencies will be present in the registry index
+([?][rationale-cargo-index]). A `builtin_deps` key is added to the
+[index's JSON schema][cargo-json-schema] ([?][rationale-cargo-builtindeps]).
+`builtin_deps` is similar to the existing `deps` key and contains a list of JSON
+objects, each representing a dependency that is "builtin" to the Rust toolchain
+and cannot otherwise be found in the registry. 
 
-- `name`:
-  The `builtin` package name, which can shadow the names of other packages in
-  the registry (but not other `deps`) ([?][rationale-cargo-index-shadowing])
-- `features`:
-  An array of strings representing enabled features in order to support changing
-  the standard library features on nightly. Optional, and an empty array is the
-  default value.
-- `optional`, `default_features`, `target`, `kind`:
-  These keys are inherited from `deps`, with the same definition.
 
-The keys `req`, `registry` and `package` from `deps` are not required as their
-counterparts in the `Cargo.toml` are not allowed as keys for `builtin = true`
-dependencies.
+> [!NOTE]
+> 
+> It is expected that the keys of these objects will be:
+>
+> - `name`
+>   - String containing name of the `builtin` package. Can shadow the names of
+>     other packages in the registry (except those packages in the `deps` key
+>     of the current package) ([?][rationale-cargo-index-shadowing])
+>
+> - `features`:
+>   - An array of strings containing enabled features in order to support changing
+>     the standard library features on nightly. Optional, empty by default.
+> 
+> - `optional`, `default_features`, `target`, `kind`:
+>   - These keys have the same definition as in the `deps` key.
+>
+> The keys `req`, `registry` and `package` from `deps` are not required per the
+> limitations on builtin dependencies.
 
 The key is optional and its default value will be the implicit builtin
 dependencies:
@@ -1312,9 +1327,11 @@ dependencies:
 ]
 ```
 
+*See the following sections for rationale/alternatives:*
+
 - [*Why add standard library crates to Cargo's index?*][rationale-cargo-index]
 - [*Why add a new key to Cargo's registry index JSON schema?*][rationale-cargo-builtindeps]
-- [*Why can builtin_deps shadow other packages in the registry?*][rationale-cargo-index-shadowing]
+- [*Why can `builtin_deps` shadow other packages in the registry?*][rationale-cargo-index-shadowing]
 
 ## Rebuilding the standard library
 [rebuilding-the-standard-library]: #rebuilding-the-standard-library
@@ -2063,7 +2080,7 @@ more usable on stable toolchains.
 In order to avoid users relying on the [unstable target-spec-json][rust#71009] format on a
 stable toolchain, using custom targets with build-std on a stable toolchain is
 disallowed by Cargo until another RFC can consider all the implications of this
-thoroughly. The idea of `rustc` disallowing custom targets on stable is covered
+thoroughly. The idea of rustc disallowing custom targets on stable is covered
 in [rust#71009].
 
 ↩ [*Custom targets*][custom-targets]
@@ -2087,7 +2104,7 @@ required:
   this would cause the build to fail.
 - rustc could support a `--print` value that would print whether the crate
   declares itself as `#![no_std]` crate, and based on this, Cargo could build
-  `std` or only `core`. This would require asking `rustc` to parse crates'
+  `std` or only `core`. This would require asking rustc to parse crates'
   sources while resolving dependencies, slowing build times. Alternatively,
   Cargo can already read Rust source to detect frontmatter (for `cargo script`)
   so it could additionally look for `#![no_std]` itself. Regardless of how it
@@ -2155,32 +2172,17 @@ added manually by users:
 ### Why imply direct builtin dependencies?
 [rationale-builtin-implied-direct]: #why-imply-direct-builtin-dependencies
 
-Cargo passes direct dependencies of the current crate with the `--extern`
-`rustc` flag and passes a `-L dependency=...` flag so `rustc` can search for
-transitive dependencies itself. One reason for this is because looking for
-direct dependencies in a `-L crate=...` directory would open up the possibility
-of `rustc` finding stale artifacts from previous builds. This means that Cargo
-must be aware of the names of any direct dependencies of a crate and cannot rely
-on the fact that they are part of the dependency graph in cases such as if the
-user were to depend on `alloc` (with `extern crate alloc`) but only tell Cargo
-about the `std` builtin dependency.
-
-`rustc` inserts dependencies on the standard library in non-intuitive ways -
-currently `core` is always added to the [extern prelude][rust-extern-prelude],
-which means that a direct dependency on `core` is always required in order for
-it to be passed to `rustc` via `--extern`.
-
-`builtin` dependencies are not added to the extern prelude by virtue of being
-passed by `--extern` because they use the `noprelude` directive to prevent this,
-so `--extern noprelude:alloc=...` does not make the `alloc` crate available to
-users without an explicit `extern crate alloc`, as is `rustc`'s behaviour
-without this proposal.
+Cargo passes direct dependencies of the current crate with the `--extern` flag
+and passes the `-L dependency=...` flag so rustc can search for transitive
+dependencies itself. Looking for direct dependencies in a `-L crate=...`
+directory would create the possibility of rustc finding stale artifacts from
+previous builds. As a consequence, Cargo must be aware of the names of any
+direct dependencies of a crate and cannot rely on the fact that they are part of
+the dependency graph.
 
 A possible alternative is for Cargo to require all `builtin` dependencies to be
 explicit but validate the hierarchy to ensure users always include a `core`
-dependency. This adds verbosity to every `Cargo.toml` file and violates the
-"facade" of the `std` crate by forcing users to learn about the `core`
-dependency.
+dependency. This is needlessly verbose.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
@@ -2219,9 +2221,9 @@ Cargo allows [renaming dependencies][cargo-docs-renaming] with the `package`
 key, which allows user code to refer to dependencies by names which do not
 match their `package` name in their respective `Cargo.toml` files.
 
-However, `rustc` expects the standard library crates to be present with their
+However, rustc expects the standard library crates to be present with their
 existing names - for example, `core` is always added to the [extern prelude][rust-extern-prelude].
-This feature would not work without a way to tell `rustc` the new names of
+This feature would not work without a way to tell rustc the new names of
 `builtin` crates.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
@@ -2300,56 +2302,50 @@ See also
 When Cargo builds the dependency graph, it is driven by the index (not
 `Cargo.toml`), so builtin dependencies need to be included in the index.
 
-↩ [*Registry index JSON*][registry-index-json]
+↩ [*Registries*][registries]
 
 ### Why add a new key to Cargo's registry index JSON schema?
 [rationale-cargo-builtindeps]: #why-add-a-new-key-to-cargos-registry-index-json-schema
 
-Cargo's [registry index schema][cargo-json-schema] cannot make breaking changes
-to its structure without incrementing its `v` key, representing the version of
-the schema. Packages are published under one particular version of the schema,
-meaning that older versions of Cargo cannot use newer versions of packages which
-are defined using a schema it does not have knowledge of. There are currently
-3 versions of the schema:
-
-- 1: added in 1.0
-- 2: added the `features2` field to support newer features syntax, partially
-  taking responsibility of feature lists from `features`. Added to `v` key to
-  support schema versions
-- 3: added `artifact`, `bindep_target` and `lib` keys to `deps` to support
-  artifact dependencies
+Cargo's [registry index schema][cargo-json-schema] is versioned and making a
+behaviour-of-Cargo-modifying change to the existing `deps` keys would be a
+breaking change. Each packages is published under one particular version of the
+schema, meaning that older versions of Cargo cannot use newer versions of
+packages which are defined using a schema it does not have knowledge of.
 
 Cargo ignores packages published under an unsupported schema version, so older
 versions of Cargo cannot use newer versions of packages relying on these
-features. This means that a new schema version is disruptive to users on older
-toolchains and should be avoided where possible.
+features. New schema version is disruptive to users on older toolchains and
+should be avoided where possible.
 
 Some new fields, including `rust-version`, were added to all versions of the
 schema. Cargo ignores fields it does not have knowledge of, so older versions of
 Cargo will simply not use `rust-version` and its presence does not change their
 behaviour.
 
-In a similar sense, current and older versions of Cargo already function
-correctly without knowledge of crate's standard library dependencies. A new top-
-level key will be ignored by older versions of Cargo, while newer versions will
-process it and combine it with the `deps` key. This is distinct to the changes
-required for artifact dependencies in version 3, which do not have a suitable
-representation in older versions of Cargo.
+Existing versions of Cargo already function correctly without knowledge of
+crate's standard library dependencies. A new top-level key will be ignored by
+older versions of Cargo, while newer versions will understand it. This is a
+different approach to that taken when artifact dependencies were added to the
+schema, as those do not have a suitable representation in older versions of
+Cargo.
 
-A possible alternative to `builtin_deps` could be to modify `deps` entries with
-a new `builtin: bool` field, similar to the keys added in version 3. These
-entries would not be processed correctly by older versions of Cargo which would
-look in the registry to find these packages and fail. These packages could be
-found if dummy versions of builtin dependencies were added to registries,
-perhaps whenever publishing a package with a `builtin` dependencies, but older
-versions of Cargo would pass these to `rustc` via `--extern` and shadow the real
-standard library dependencies in the sysroot. This approach is valid with a new
-version of the schema, but as discussed above this limits older versions of
-Cargo to packages without a `builtin` dependency specified.
+The obvious alternative to a `builtin_deps` key is to modify `deps` entries with
+a new `builtin: bool` field and to increment the version of the schema. However,
+these entries would not be understood by older versions of Cargo which would
+look in the registry to find these packages and fail to do so.
 
-↩ [*Registry index JSON*][registry-index-json]
+That approach could be made to work if dummy packages for `core`/`alloc`/`std`
+were added to registries. Older versions of Cargo would pass these to rustc
+via `--extern` and shadow the real standard library dependencies in the sysroot,
+so these packages would need to contain `extern crate std; pub use std::*;` (and
+similar for `alloc`/`core`) to try and load the pre-built libraries from the
+sysroot (this is the same approach as packages like [embed-rs][embed-rs-source]
+take today, using `path` dependencies for the standard library to shadow it).
 
-### Why can builtin_deps shadow other packages in the registry?
+↩ [*Registries*][registries]
+
+### Why can `builtin_deps` shadow other packages in the registry?
 [rationale-cargo-index-shadowing]: #why-can-builtin_deps-shadow-other-packages-in-the-registry
 
 While `crates.io` forbids certain crate names including `std`, `alloc` and
@@ -2358,9 +2354,9 @@ a way to refer to packages with the same name either in the registry or builtin,
 which `builtin_deps` allows.
 
 `builtin_deps` names are not allowed to shadow names of packages in `deps` as
-these would conflict when passed to `rustc` via `--extern`.
+these would conflict when passed to rustc via `--extern`.
 
-↩ [*Registry index JSON*][registry-index-json]
+↩ [*Registries*][registries]
 
 ## Rebuilding the standard library
 [rationale-rebuilding-the-standard-library]: #rebuilding-the-standard-library-1
@@ -2394,7 +2390,7 @@ mechanism for configuring the standard library.
 [rationale-build-std-off]: #why-accept-off-as-a-value-for-build-std
 
 While not a default value, the user can specify `off` if they prefer which will
-never rebuild the standard library. `rustc` will still return an error when the
+never rebuild the standard library. rustc will still return an error when the
 user's target-modifiers do not match the prebuilt standard library.
 
 The `off` value is useful particularly for qualified toolchains where rebuilding
@@ -2828,13 +2824,9 @@ What syntax should be used for the explicit standard library dependencies?
 ## What is the format for builtin dependencies in `Cargo.lock`?
 [unresolved-lockfile]: #what-is-the-format-for-builtin-dependencies-in-cargolock
 
-Currently the `source` field should be a URL with a scheme. For example:
-
-```toml
-source = "registry+https://github.com/rust-lang/crates.io-index"
-```
-
-Is "builtin" a valid URL here? If not, can the URL be changed or worked around?
+How should `builtin` deps be represented in lockfiles? Is `builtin = true`
+appropriate? Could the `source` field be reused with the string "builtin" or
+should it stay only as a URL+scheme?
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
   
@@ -3966,13 +3958,13 @@ implementation.
     added)
 - **[cargo#7421]: Change build-std to use --sysroot**, [ehuss], Sep 2019
   - The initial implementation used `--extern` to provide rustc the newly-built
-    standard library artifacts to later `rustc` invocations. This did not have
+    standard library artifacts to later rustc invocations. This did not have
     identical behaviour to the existing pre-built artefacts in the sysroot
     ([wg-cargo-std-aware#40])
   - Negated the need to prevent rustc from using the sysroot
     ([wg-cargo-std-aware#31])
   - Instead, this PR constructed a sysroot in Cargo's `target` directory and passed
-    that to `rustc` to replace the default sysroot
+    that to rustc to replace the default sysroot
   - It was found that this sysroot approach could still allow users to depend on
     sysroot crates without declaring a dependency on
     it([wg-cargo-std-aware#49])
@@ -4282,6 +4274,7 @@ general feature for Cargo that could then apply to build-std too:
 [panic-semihosting]: https://crates.io/crates/panic-semihosting
 [portability-wg]: https://github.com/rust-lang-nursery/portability-wg
 [rust-lang/cargo]: https://github.com/rust-lang/cargo
+[rust-lang/crates.io-index]: https://github.com/rust-lang/crates.io-index
 [rust-lang/rust]: https://github.com/rust-lang/rust
 [wg-cargo-std-aware]: https://github.com/rust-lang/wg-cargo-std-aware
 [xargo]: https://github.com/japaric/xargo
@@ -4309,7 +4302,6 @@ general feature for Cargo that could then apply to build-std too:
 [cargo#14951]: https://github.com/rust-lang/cargo/pull/14951
 [cargo#15065]: https://github.com/rust-lang/cargo/pull/15065
 [cargo#2768]: https://github.com/rust-lang/cargo/pull/2768
-[cargo#3126]: https://github.com/rust-lang/cargo/issues/3126
 [cargo#4959]: https://github.com/rust-lang/cargo/issues/4959
 [cargo#5002]: https://github.com/rust-lang/cargo/issues/5002
 [cargo#5003]: https://github.com/rust-lang/cargo/issues/5003
@@ -4572,6 +4564,7 @@ general feature for Cargo that could then apply to build-std too:
 [nagisa]: https://github.com/nagisa
 [nazar-pc]: https://github.com/nazar-pc
 [parraman]: https://github.com/parraman
+[petrochenkov]: https://github.com/petrochenkov
 [phip1611]: https://github.com/phip1611
 [raoulstrackx]: https://github.com/raoulstrackx
 [raphaelcohn]: https://github.com/raphaelcohn
@@ -4579,6 +4572,7 @@ general feature for Cargo that could then apply to build-std too:
 [saethlin]: https://github.com/saethlin
 [skyzh]: https://github.com/skyzh
 [tamird]: https://github.com/tamird
+[tomassedovic]: https://github.com/tomassedovic
 [tmiasko]: https://github.com/tmiasko
 [tomaak]: https://github.com/tomaak
 [vi]: https://github.com/vi
