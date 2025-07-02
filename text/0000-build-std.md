@@ -1175,8 +1175,9 @@ std = { .. }
 std = { path = "../libstd" }
 ```
 
-As with any other `path` or `git` dependency, crates with these dependency
-sources will not be able to be published to crates.io.
+In line with `crates.io`'s policy of not allowing packages with dependencies on
+code published outside of `crates.io`, crates with these dependency sources will
+not be able to be published to crates.io.
 
 It is not possible to perform source replacement on standard library
 dependencies using `builtin = true`.
@@ -1259,7 +1260,9 @@ standard library can always be present in the `Cargo.toml` of the standard
 library's dependencies.
 
 The `core`, `alloc` and `std` dependencies can be patched in the standard
-library's workspace to point to the local copy of the crates.
+library's workspace to point to the local copy of the crates. This avoids
+`crates.io` dependencies needing to add support for `rustc_dep_of_std` before
+the standard library can depend on them.
 
 ### `dev-dependencies` and `build-dependencies`
 [dev-dependencies-and-build-dependencies]: #dev-dependencies-and-build-dependencies
