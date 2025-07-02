@@ -976,22 +976,30 @@ edition = "2024"
 std = { builtin = true }
 ```
 
-`builtin` is a new source of dependency, like crates.io dependencies (with the
-`version` key), `path` dependencies or `git` dependencies. `builtin` can only be
-set to `true` and cannot be combined with any other dependency source for a
-given dependency ([?][rationale-builtin-other-sources]). `builtin` can only be
-used with crates named `core`, `alloc` or `std`
-([?][rationale-no-builtin-other-crates]):
+`builtin` is a new source of dependency, like registry dependencies (with the
+`version` key and optionally the `registry` key), `path` dependencies or `git`
+dependencies. `builtin` can only be set to `true` and cannot be combined with
+any other dependency source for a given dependency ([?][rationale-builtin-other-sources]).
+`builtin` can only be used with crates named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]).
+
+An explicit dependency on a `builtin = true` crate implies a direct dependency
+on other `builtin` crates that the crate depends on ([?][rationale-builtin-implied-direct]).
+For example, an explicit dependency on `alloc` like so..
 
 ```toml
 [dependencies]
 alloc = { builtin = true }
 ```
 
+..is equivalent to an explicit dependency on both `alloc` and `core`:
+
 ```toml
 [dependencies]
+alloc = { builtin = true }
 core = { builtin = true }
 ```
+
+Similarly, an explicit `std` dependency implies both `alloc` and `core`.
 
 crates.io will accept crates published which have `builtin` dependencies.
 
@@ -1008,7 +1016,7 @@ edition = "2024"
 [dependencies]
 ```
 
-..which is equivalent to the following explicit dependency on `std`:
+..which is equivalent to the following explicit dependency on `builtin` crates:
 
 ```toml
 [package]
@@ -1018,10 +1026,12 @@ edition = "2024"
 
 [dependencies]
 std = { builtin = true }
+alloc = { builtin = true }
+core = { builtin = true }
 ```
 
 Any `builtin` dependency present in the manifest will disable the implicit
-dependency on `std`. Multiple standard library crates can be added as
+dependency on `std`. Multiple standard library crates can be added explicitly as
 dependencies:
 
 ```toml
@@ -1059,7 +1069,7 @@ least one non-optional dependency on the standard library (e.g. an optional
 non-optional `core`). `core` cannot be optional.
 
 Dependencies with `builtin = true` cannot be renamed with the `package` key
-([?][rationale-package-key]) or use the `registry` key.
+([?][rationale-package-key]).
 
 Dependencies with `builtin = true` can be specified as platform-specific
 dependencies:
@@ -1070,14 +1080,25 @@ std = { builtin = true}
 ```
 
 Implicit and explicit standard library dependencies are added to `Cargo.lock`
-files ([?][rationale-cargo-lock]). This likely necessitates a new lockfile
-version in order for Cargo to find `builtin` dependencies in the same lockfile
-and to process `builtin` sources correctly.
+files ([?][rationale-cargo-lock]). A new lockfile version will be introduced to
+add support for packages with a `builtin` source, like so:
+
+```toml
+[[package]]
+name = "std"
+version = "0.0.0"
+source = "builtin"
+```
+
+The package version of `std`, `alloc` and `core` will be fixed at `0.0.0`. The
+optional lockfile fields `dependencies` (which are opaque to the resolver) and
+`checksum` will not be present for `builtin` dependencies.
 
 *See the following sections for rationale/alternatives:*
 
 - [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][rationale-why-explicit-deps]
 - [*Why disallow builtin dependencies to be combined with other sources?*][rationale-builtin-other-sources]
+- [*Why imply direct builtin dependencies?*][rationale-builtin-implied-direct]
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
 - [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
 - [*Why add standard library dependencies to Cargo.lock?*][rationale-cargo-lock]
@@ -1085,6 +1106,7 @@ and to process `builtin` sources correctly.
 *See the following sections for relevant unresolved questions:*
 
 - [*What syntax is used to identify dependencies on the standard library in `Cargo.toml`?*][unresolved-dep-syntax]
+- [*What is the format for builtin dependencies in `Cargo.lock`?*][unresolved-lockfile]
 
 ### Non-`builtin` standard library dependencies
 [non-builtin-standard-library-dependencies]: #non-builtin-standard-library-dependencies
@@ -1263,7 +1285,8 @@ The keys `req`, `registry` and `package` from `deps` are not required as their
 counterparts in the `Cargo.toml` are not allowed as keys for `builtin = true`
 dependencies.
 
-The key is optional and its default value will be the implicit `std` dependency:
+The key is optional and its default value will be the implicit builtin
+dependencies:
 
 ```json
 "builtin_deps" : [
@@ -1274,6 +1297,14 @@ The key is optional and its default value will be the implicit `std` dependency:
         "default_features": true,
         "target": null,
         "kind": "normal",
+    },
+    {
+        "name": "alloc",
+        ... # as above
+    },
+    {
+        "name": "core",
+        ... # as above
     }
 ]
 ```
@@ -2118,6 +2149,38 @@ added manually by users:
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
+### Why imply direct builtin dependencies?
+[rationale-builtin-implied-direct]: #why-imply-direct-builtin-dependencies
+
+Cargo passes direct dependencies of the current crate with the `--extern`
+`rustc` flag and passes a `-L dependency=...` flag so `rustc` can search for
+transitive dependencies itself. One reason for this is because looking for
+direct dependencies in a `-L crate=...` directory would open up the possibility
+of `rustc` finding stale artifacts from previous builds. This means that Cargo
+must be aware of the names of any direct dependencies of a crate and cannot rely
+on the fact that they are part of the dependency graph in cases such as if the
+user were to depend on `alloc` (with `extern crate alloc`) but only tell Cargo
+about the `std` builtin dependency.
+
+`rustc` inserts dependencies on the standard library in non-intuitive ways -
+currently `core` is always added to the [extern prelude][rust-extern-prelude],
+which means that a direct dependency on `core` is always required in order for
+it to be passed to `rustc` via `--extern`.
+
+`builtin` dependencies are not added to the extern prelude by virtue of being
+passed by `--extern` because they use the `noprelude` directive to prevent this,
+so `--extern noprelude:alloc=...` does not make the `alloc` crate available to
+users without an explicit `extern crate alloc`, as is `rustc`'s behaviour
+without this proposal.
+
+A possible alternative is for Cargo to require all `builtin` dependencies to be
+explicit but validate the hierarchy to ensure users always include a `core`
+dependency. This adds verbosity to every `Cargo.toml` file and violates the
+"facade" of the `std` crate by forcing users to learn about the `core`
+dependency.
+
+↩ [*Standard library dependencies*][standard-library-dependencies]
+
 ### Why not migrate to always requiring explicit standard library dependencies?
 [rationale-no-migration]: #why-not-migrate-to-always-requiring-explicit-standard-library-dependencies
 
@@ -2756,6 +2819,19 @@ stabilisation and aren't pertinent to the overall design:
 
 What syntax should be used for the explicit standard library dependencies?
 `builtin = true`? `sysroot = true`? `version = "*"`?
+
+↩ [*Standard library dependencies*][standard-library-dependencies]
+
+## What is the format for builtin dependencies in `Cargo.lock`?
+[unresolved-lockfile]: #what-is-the-format-for-builtin-dependencies-in-cargolock
+
+Currently the `source` field should be a URL with a scheme. For example:
+
+```toml
+source = "registry+https://github.com/rust-lang/crates.io-index"
+```
+
+Is "builtin" a valid URL here? If not, can the URL be changed or worked around?
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
   
