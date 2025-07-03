@@ -11,7 +11,7 @@ these rules to keep it consistent:
 - Text is wrapped at ~80 characters, except for headings
 - Every header has a reference link defined below it with its anchor. Top-level
   sections just match the header text. Other sections have a prefix (e.g.
-  "rationale-foo", not "foo).
+  "rationale-foo", not "foo").
 - Add parentheticals with `([?][anchor])` wherever an explanation is justified,
   linking to the relevant sub-section in the rationale/alterantive section.
 - Each justification/alternative in a section must be included in the bullet
@@ -344,7 +344,7 @@ source material, which is exhaustively surveyed in
 ## [rfcs#1133] (2015)
 [rfcs-1133-2015]: #rfcs1133-2015
 
-build-std was first proposed in a [2015 RFC (rfcs#1133))][rfcs#1133] by
+build-std was first proposed in a [2015 RFC (rfcs#1133)][rfcs#1133] by
 [Ericson2314], aiming to improve support for targets that do not have a
 pre-built standard library; to enable building the standard library with
 different profiles; and to simplify `rustbuild` (now `bootstrap`). It also was
@@ -575,7 +575,7 @@ categories:
 
    [wg-cargo-std-aware#30] identifies that some targets have special handling in
    bootstrap which will need to be duplicated in build-std. Targets could be
-   whitelisted or blacklisted to avoid having to address this initially.
+   allowlisted or denylisted to avoid having to address this initially.
 
    [wg-cargo-std-aware#38] argues that a forced lock of the standard library
    is desirable, to which there was no disagreement. This was more relevant
@@ -660,7 +660,7 @@ categories:
    of the literature review for more detail][cargo-feature-requests-narrowly-applied-to-build-std]
 
 Since around 2020, activity in the [wg-cargo-std-aware] repository largely
-trailed of and there have not been any significant developments related to
+trailed off and there have not been any significant developments related to
 build-std since.
 
 ### Implementation summary
@@ -873,7 +873,7 @@ future possiblities):
       `panic_immediate_abort` to reduce binary size
 
 Some use cases are unlikely to supported by the project unless a new and
-compelling use-case is presented, andsso this RFC may make decisions which make
+compelling use-case is presented, and so this RFC may make decisions which make
 these motivations harder to solve in future:
 
 1. **Modifying the source code of the standard library** ([wg-cargo-std-aware#7])
@@ -1210,7 +1210,7 @@ std = { builtin = true, default-features = false } # not permitted
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why limit enabling standard library features to nightly?*][why-limit-enabling-standard-library-features-to-nightly]
+- [*Why limit enabling standard library features to nightly?*][rationale-features]
 
 *See the following sections for future possibilities:*
 
@@ -2724,7 +2724,7 @@ but this may happen multiple times if they are cleaned from its cache without
 upgrading the toolchain version.
 
 See
-[*Why use the lockfile of the `rust-src` component?*][why-use-the-lockfile-of-the-rust-src-component]
+[*Why use the lockfile of the `rust-src` component?*][rationale-lockfile]
 
 ↩ [*Vendored `rust-src`*][vendored-rust-src]
 
