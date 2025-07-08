@@ -230,6 +230,21 @@ often different depending on the target.
 ### Target support
 [background-target-support]: #target-support
 
+As per the [Target Tier Policy][target-tier-policy], the Rust project guarantees
+one of three levels of support for each built-in target:
+
+- Tier 3 targets exist in the codebase but have no CI support. As a consequence,
+  they might not build
+- Tier 2 targets have CI checks to ensure the target builds, but they may or may
+  not pass tests
+- Tier 1 targets have CI checks to ensure that they both build and pass tests
+
+As well as the level of testing a target has before releases, a target's tier
+may influence the prioritisation of issues that affect that target.
+
+### std support
+[background-target-support]: #std-support
+
 The `std` crate's [`build.rs`][std-build.rs] checks for supported values of the
 `CARGO_CFG_TARGET_*` environment variables. These variables are akin to the
 conditional compilation [configuration options][conditional-compilation-config-options],
@@ -254,6 +269,39 @@ and the JSON format is itself unstable. Custom targets do not have a pre-built
 standard library and so must use `-Zbuild-std`. Custom targets may have
 `restricted_std` set depending on their `cfg` configuration options - generally
 speaking depending on how similar they are to builtin targets.
+
+### Preludes
+[background-preludes]: #preludes
+
+#### std and core preludes
+[background-preludes]: #std-and-core-preludes
+
+Each Rust crate has a standard library prelude import inserted at the root by
+rustc in the form of a glob `use` directive. This brings various commonly-used
+items into scope. `std` and `core` each have their own version of the prelude
+for each edition. By default the `std` prelude for that edition is imported,
+though crates with the `no_std` attribute use the `core` prelude.
+
+rustc also imports the relevant crate (depending on if the `no_std` attribute is
+present) into the crate root by injecting an `extern crate core/std` directive.
+This is annotated with `macro_use` in order to bring their macros into scope.
+
+#### Extern prelude
+[background-extern-prelude]: #extern-prelude
+
+The extern prelude includes crates imported with `extern crate` in the module
+or crates passed to rustc via `--extern`. In the 2018 and later editions these
+can be referenced directly with `use` statements.
+
+`rustc` also adds `core` to the extern prelude along with `std` if the `no_std`
+attribute is not present. `alloc` and `test` are not added to the extern prelude
+and so must be brought into scope with an explicit `extern crate` statement.
+
+In order to simulate this behaviour when `-Zbuild-std` passes standard library
+dependencies to rustc the `noprelude` option for the `--extern` flag is used.
+This avoids crates like `alloc` being added to the extern prelude, but rustc
+will still add `core` and `std` to it implicitly as without the use of
+`-Zbuild-std`.
 
 ## Registries
 [background-registries]: #registries
@@ -734,12 +782,12 @@ warnings will be silenced.
 build-std provides newly-built standard library dependencies to rustc using
 `--extern noprelude:$crate`. `noprelude` was added in [rust#67074] to support
 build-std and ensure that loading from the sysroot and using `--extern` were
-equivalent ([wg-cargo-std-aware#40]). Prior to the addition of `noprelude`,
-build-std briefly created new sysroots and used those instead of `--extern`
-([cargo#7421]). rustc can still try to load a crate from the sysroot if the user
-uses it which is currently a common source of confusing "duplicate lang item"
-errors (as the user ends up with build-std `core` and sysroot `core`
-conflicting).
+equivalent ([wg-cargo-std-aware#40], [background-extern-prelude]). Prior to the
+addition of `noprelude`, build-std briefly created new sysroots and used those
+instead of `--extern` ([cargo#7421]). rustc can still try to load a crate from
+the sysroot if the user uses it which is currently a common source of confusing
+"duplicate lang item" errors (as the user ends up with build-std `core` and
+sysroot `core` conflicting).
 
 Host dependencies like build scripts and `proc_macro` crates use the
 existing pre-built standard library from the sysroot, so Cargo does not
@@ -1038,19 +1086,7 @@ core = { builtin = true }
 ```
 
 Any `builtin` dependency present in the manifest will disable the implicit
-dependency on `std`. Multiple standard library crates can be added explicitly as
-dependencies:
-
-```toml
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-std = { builtin = true }
-core = { builtin = true }
-```
+dependency on `std`.
 
 Standard library dependencies can be marked as `optional` and be enabled
 conditionally by a feature in the crate:
@@ -1076,7 +1112,9 @@ least one non-optional dependency on the standard library (e.g. an optional
 non-optional `core`). `core` cannot be optional.
 
 Dependencies with `builtin = true` cannot be renamed with the `package` key
-([?][rationale-package-key]).
+([?][rationale-package-key]). It is not possible to perform source replacement
+on the `builtin` source using the `[source]` Cargo config table
+([?][rationale-source-replacement], [future-possibilities]).
 
 Dependencies with `builtin = true` can be specified as platform-specific
 dependencies:
@@ -1087,7 +1125,7 @@ std = { builtin = true}
 ```
 
 Implicit and explicit standard library dependencies are added to `Cargo.lock`
-files ([?][rationale-cargo-lock]). 
+files ([?][rationale-cargo-lock]).
 
 > [!NOTE]
 > 
@@ -1112,6 +1150,8 @@ files ([?][rationale-cargo-lock]).
 - [*Why imply direct builtin dependencies?*][rationale-builtin-implied-direct]
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
 - [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
+- [*Why disallow renaming standard library dependencies?*][rationale-package-key]
+- [*Why disallow source replacement on `builtin` packages?*][rationale-source-replacement]
 - [*Why add standard library dependencies to Cargo.lock?*][rationale-cargo-lock]
 
 *See the following sections for relevant unresolved questions:*
@@ -1177,10 +1217,7 @@ std = { path = "../libstd" }
 
 In line with `crates.io`'s policy of not allowing packages with dependencies on
 code published outside of `crates.io`, crates with these dependency sources will
-not be able to be published to crates.io.
-
-It is not possible to perform source replacement on standard library
-dependencies using `builtin = true`.
+not be able to be published to `crates.io`.
 
 *See the following sections for rationale/alternatives:*
 
@@ -1284,11 +1321,10 @@ Standard library dependencies will be present in the registry index
 [index's JSON schema][cargo-json-schema] ([?][rationale-cargo-builtindeps]).
 `builtin_deps` is similar to the existing `deps` key and contains a list of JSON
 objects, each representing a dependency that is "builtin" to the Rust toolchain
-and cannot otherwise be found in the registry. 
-
+and cannot otherwise be found in the registry.
 
 > [!NOTE]
-> 
+>
 > It is expected that the keys of these objects will be:
 >
 > - `name`
@@ -1299,7 +1335,7 @@ and cannot otherwise be found in the registry.
 > - `features`:
 >   - An array of strings containing enabled features in order to support changing
 >     the standard library features on nightly. Optional, empty by default.
-> 
+>
 > - `optional`, `default_features`, `target`, `kind`:
 >   - These keys have the same definition as in the `deps` key.
 >
@@ -1341,7 +1377,7 @@ dependencies:
 
 Cargo configuration will contain a new key `build-std` under the `[profile]`
 section ([?][rationale-build-std-in-config]), permitting one of three values -
-"off" ([?][rationale-build-std-off]), "target-modifiers" or "match-profile" :
+"off" ([?][rationale-build-std-off]), "target-modifiers" or "match-profile":
 
 ```toml
 [profile.dev]
@@ -1373,6 +1409,7 @@ value of the `build-std` key ([?][rationale-why-automatic]):
   No                          | No                        | No
   Yes                         | No                        | No
   Yes                         | Yes                       | Error!
+
 - If `build-std = "target-modifiers"`, then the pre-built standard library will
   be used as long as it was compiled with target modifiers compatible with the
   current profile.
@@ -1382,6 +1419,7 @@ value of the `build-std` key ([?][rationale-why-automatic]):
   No                          | No                        | No
   Yes                         | No                        | No
   Yes                         | Yes                       | Yes
+
 - If `build-std = "match-profile"`, then the pre-built standard library will be
   used only if it has an identical configuration to the current profile.
   
@@ -1397,44 +1435,35 @@ and use the standard library from source with the requested profile.
 > [!NOTE]
 >
 > Inspired by the concept of [opaque dependencies][Opaque dependencies], the
-> dependencies of the standard library crates are entirely opaque to the user,
-> who cannot control compilation any of the dependencies of the `core`, `alloc`
-> or `std` standard library crates individually.
+> standard library is resolved differently to other dependencies:
 >
-> The lockfile included in the standard library source will be used when
-> resolving the standard library's dependencies ([?][rationale-lockfile]).
+> - The lockfile included in the standard library source will be used when
+>   resolving the standard library's dependencies ([?][rationale-lockfile]).
+> - The dependencies of the standard library crates are entirely opaque to the
+>   user. A different semver-compatible version of standard library
+>   dependencies can exist in the user's resolve, and the user cannot control
+>   compilation any of the dependencies of the `core`, `alloc`  or `std`
+>   standard library crates individually.
+> - The profile defined in the standard library will be used (see [profiles]).
+>
+> Cargo will resolve an opaque dependency like the standard library separately,
+> and will load its workspace and perform that part of the resolve in it. The
+> roots for the resolve consist of the unified set of packages that any crate in
+> the dependency graph has a explicit dependency on and those which Cargo infers
+> a direct dependency on, including `test` when appropriate. The resolver will
+> add relevant dependencies on these root crates for crates in the "parent"
+> resolve.
+>
+> rustc loads panic runtimes in a different way to most dependencies, and
+> without looking in the sysroot they will fail to load correctly unless passed
+> in with `--extern`. rustc will need to be patched to be able to load panic
+> runtimes from `-L dependency=` paths in line with other transitive
+> dependencies.
 >
 > The standard library will always be a non-incremental build
 > ([?][rationale-incremental]), with no `depinfo` produced, and only a `rlib`
 > produced (no `dylib`) ([?][rationale-no-dylib]). It will be built into the
 > `target` directory of the crate or workspace like any other dependency.
-
-> [!NOTE]
->
-> A key detail in build-std is the contract between rustc and Cargo that must be
-> upheld when Cargo is providing standard library dependencies:
->
-> rustc only requires that `--extern noprelude:std=path/to/std.lib`,
-> `--extern noprelude:alloc=path/to/alloc.lib` and
-> `--extern noprelude:core=path/to/core.lib` be passed, assuming all three
-> crates are required. No other `--extern` flags are required.
->
-> `--extern noprelude:alloc=path/to/alloc.lib` and
-> `--extern noprelude:core=path/to/core.lib` are only required in addition to
-> `--extern noprelude:std=path/to/std.lib` so that writing `extern crate alloc`
-> or `extern crate core` works as it does with the pre-built standard library
-> from the sysroot.
->
-> rustc will find any dependencies of these crates first from the paths provided
-> with `-L dependency=` and then from the sysroot. rustc will attempt to load
-> some crates like `compiler_builtins` and `panic_unwind` itself.
->
-> rustc will need patched to be able to load `panic_unwind` from
-> `-L dependency=` paths.
->
-> Cargo will load the sysroot crate in the standard library and perform the
-> resolve on that workspace with the packages that the user has a explicit
-> dependency on and those which require `--extern` to be passed explicitly.
 
 The host pre-built standard library will always be used for procedural macros
 and build scripts ([?][rationale-sysroot-for-host-deps]). Artifact dependencies
@@ -1690,13 +1719,13 @@ be used as part of the standard library build on targets which require it.
 ### Potential migration breakage
 [potential-migration-breakage]: #potential-migration-breakage
 
-When building an existing `no_std` project for a tier two or three target with
-build-std, there could be an implicit dependency on `std` from a dependency
-`no_std` crate that has not yet made its dependency on only the `core` crate
-explicit, for example. In this circumstance, this would fail to build as the
-target will have had `standard_library_support.std = false` in its target
-specification and Cargo will refuse to build `std` (see
-[*Target standard library support*][target-standard-library-support])
+When building an existing `no_std` project for target without `std` support,
+there could be an implicit dependency on `std` from a dependency `no_std` crate
+that has not yet made its `builtin` dependencies explicit. In this circumstance
+with `build-std` enabled this would fail to build as the target will have
+`standard_library_support.std = false` in its target specification and Cargo
+will refuse to build `std` (see
+[*Target standard library support*][target-standard-library-support]).
 ([?][rationale-breakage]).
 
 *See the following sections for rationale/alternatives:*
@@ -1736,6 +1765,16 @@ coverage with the requested sanitizers.
 
 Combining these shipped sanitizer runtimes with other target modifiers is
 outside the scope of this RFC.
+
+### Rust Project support
+[rust-project-support]: #rust-project-support
+
+As per [background-target-support], the Rust project maintains CI jobs that run
+tests for tier 1 targets. It is infeasible for these CI jobs to cover the wide
+variety of user configurations for the standard library that `build-std` allow
+for. For this reason, for the purposes of support and bug prioritisation, a
+target rebuilding the standard library from source should be treated as no
+higher than tier 2.
 
 ## Cargo subcommands
 [cargo-subcommands]: #cargo-subcommands
@@ -2175,13 +2214,17 @@ added manually by users:
 ### Why imply direct builtin dependencies?
 [rationale-builtin-implied-direct]: #why-imply-direct-builtin-dependencies
 
+When a crate depends on `std`, the user can also write `extern crate alloc` or
+similar for `core`. From Cargo's perspective this adds a direct dependency on
+these crates, which should always be present for compatibility purposes.
+
 Cargo passes direct dependencies of the current crate with the `--extern` flag
 and passes the `-L dependency=...` flag so rustc can search for transitive
 dependencies itself. Looking for direct dependencies in a `-L crate=...`
 directory would create the possibility of rustc finding stale artifacts from
 previous builds. As a consequence, Cargo must be aware of the names of any
 direct dependencies of a crate and cannot rely on the fact that they are part of
-the dependency graph.
+the dependency graph below the crate.
 
 A possible alternative is for Cargo to require all `builtin` dependencies to be
 explicit but validate the hierarchy to ensure users always include a `core`
@@ -2228,6 +2271,18 @@ However, rustc expects the standard library crates to be present with their
 existing names - for example, `core` is always added to the [extern prelude][rust-extern-prelude].
 This feature would not work without a way to tell rustc the new names of
 `builtin` crates.
+
+↩ [*Standard library dependencies*][standard-library-dependencies]
+
+### Why disallow source replacement on `builtin` packages?
+[rationale-source-replacement]: #why-disallow-source-replacement-on-builtin-packages
+
+As [previously stated][vendored-rust-src] modifying the source code of the
+standard library in the `rust-src` component is not permitted. Source
+replacement of the `builtin` source could be a way to support this in the future
+but it is not clear at this time what the exact use cases for doing this are and
+whether the Rust Project wishes to support this. For these reasons it is left as
+a possible future extension to this RFC.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
@@ -2352,9 +2407,9 @@ take today, using `path` dependencies for the standard library to shadow it).
 [rationale-cargo-index-shadowing]: #why-can-builtin_deps-shadow-other-packages-in-the-registry
 
 While `crates.io` forbids certain crate names including `std`, `alloc` and
-`core`, third party registries may allow it without a warning. The schema needs
-a way to refer to packages with the same name either in the registry or builtin,
-which `builtin_deps` allows.
+`core`, third party registries may allow them without a warning. The schema
+needs a way to refer to packages with the same name either in the registry or
+builtin, which `builtin_deps` allows.
 
 `builtin_deps` names are not allowed to shadow names of packages in `deps` as
 these would conflict when passed to rustc via `--extern`.
@@ -2495,10 +2550,10 @@ rebuilds otherwise).
 
 Using different dependency versions for the standard library would invalidate
 the upstream testing of the standard library guaranteeing that the standard
-library works as expected for a target, per the target tier policy. In
-particular, some crates use unstable APIs when included as a dependency of the
-standard library meaning that there is a high risk of breakage if any package
-version is changed.
+library works as expected for a target, per the
+[target tier policy][target-tier-policy]. In particular, some crates use
+unstable APIs when included as a dependency of the standard library meaning that
+there is a high risk of build breakage if any package version is changed.
 
 Using the lockfile included in the `rust-src` component guarantees that the same
 dependency versions are used as in the pre-built standard library. As the
@@ -2511,7 +2566,7 @@ dependencies to newer patch versions that may contain security fixes. However,
 this is already impossible with the prebuilt standard library.
 
 See
-[*Why vendor the standard library's dependencies?*][why-vendor-the-standard-librarys-dependencies]
+[*Why vendor the standard library's dependencies?*][rationale-vendoring]
 
 ↩ [*Rebuilding the standard library*][rebuilding-the-standard-library]
 
@@ -2903,6 +2958,17 @@ locally. If a user wishes to customise the compilation of these files like the
 standard library, then there is no mechanism to do so.
 
 ↩ [*Special object files*][special-object-files]
+
+## Allow `builtin` source replacement
+[future-source-replacement]: #allow-builtin-source-replacement
+
+This involves allowing the user to blanket-override the standard library sources
+with a `[source.builtin]` section of the Cargo configuration.
+
+As [rationale-source-replacement] details it is unclear if users need to do this
+or if it's even something the Rust project wishes to support.
+
+↩ [*Standard library dependencies*][standard-library-dependencies]
 
 # Appendix I: Summary of features to be implemented
 [appendix-i]: #appendix-i-summary-of-features-to-be-implemented
@@ -4478,6 +4544,7 @@ general feature for Cargo that could then apply to build-std too:
 [embed-rs-cargo-toml]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/Cargo.toml#L21
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
+[target-tier-policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
 [sgx]: https://github.com/apache/incubator-teaclave-sgx-sdk
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
 [std-unsupported]: https://github.com/rust-lang/rust/blob/f768dc01da9a681716724418ccf64ce55bd396c5/library/std/src/sys/pal/mod.rs#L68-L69
