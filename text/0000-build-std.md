@@ -1034,33 +1034,14 @@ std = { builtin = true }
 dependencies. `builtin` can only be set to `true` and cannot be combined with
 any other dependency source for a given dependency
 ([?][rationale-builtin-other-sources]). `builtin` can only be used with crates
-named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]).
-
-An explicit dependency on a `builtin = true` crate implies a direct dependency
-on other `builtin` crates that the crate depends on
-([?][rationale-builtin-implied-direct]). For example, an explicit dependency on
-`alloc` like so..
-
-```toml
-[dependencies]
-alloc = { builtin = true }
-```
-
-..is equivalent to an explicit dependency on both `alloc` and `core`:
-
-```toml
-[dependencies]
-alloc = { builtin = true }
-core = { builtin = true }
-```
-
-Similarly, an explicit `std` dependency implies both `alloc` and `core`.
-
-crates.io will accept crates published which have `builtin` dependencies.
+named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]) on
+stable, but can be specified freely on nightly
+([?][rationale-nightly-builtin-crates]]).
 
 Crates without an explicit dependency on the standard library now have a
-implicit dependency on the `std` crate ([?][rationale-no-migration]). In the
-`hello_world` crate below, there is an implicit dependency on `std`..
+implicit dependency ([?][rationale-no-migration]) on `std`, `alloc` and `core`
+crates ([?][rationale-implicit-direct-deps]). In the `hello_world` crate below,
+there are no explicit `builtin` dependencies..
 
 ```toml
 [package]
@@ -1071,7 +1052,7 @@ edition = "2024"
 [dependencies]
 ```
 
-..which is equivalent to the following explicit dependency on `builtin` crates:
+..which is equivalent to the following explicit dependencies:
 
 ```toml
 [package]
@@ -1087,6 +1068,8 @@ core = { builtin = true }
 
 Any `builtin` dependency present in the manifest will disable the implicit
 dependency on `std`.
+
+crates.io will accept crates published which have `builtin` dependencies.
 
 Standard library dependencies can be marked as `optional` and be enabled
 conditionally by a feature in the crate:
@@ -1147,8 +1130,9 @@ files ([?][rationale-cargo-lock]).
 
 - [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][rationale-why-explicit-deps]
 - [*Why disallow builtin dependencies to be combined with other sources?*][rationale-builtin-other-sources]
-- [*Why imply direct builtin dependencies?*][rationale-builtin-implied-direct]
+- [*Why imply a direct dependency on all of `std`, `alloc` and `core`?*][rationale-implicit-direct-deps]
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
+- [*Why allow all names for `builtin` crates on nightly?*][rationale-nightly-builtin-crates]
 - [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
 - [*Why disallow renaming standard library dependencies?*][rationale-package-key]
 - [*Why disallow source replacement on `builtin` packages?*][rationale-source-replacement]
@@ -2211,8 +2195,29 @@ added manually by users:
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
-### Why imply direct builtin dependencies?
-[rationale-builtin-implied-direct]: #why-imply-direct-builtin-dependencies
+### Why allow all names for `builtin` crates on nightly?
+[rationale-nightly-builtin-crates]: #why-allow-all-names-for-builtin-crates-on-nightly
+
+Given that all standard library crates valid for that target are currently
+available in the sysroot, the user can write an `extern crate` declaration and
+make them available in their crate. All crates other than `std`, `alloc` or
+`core` are marked unstable either explicitly or implicitly with the use of
+`-Zforce-unstable-if-unmarked` meaning that these `extern crate` declarations
+require opting into the crates instability.
+
+An example is that many users have written benchmarks using `test` and have
+written `extern crate test` not gated on `#[cfg(test)]` attribute. These users
+need a way to specify their `test` dependency. There may be other niche uses of
+unstable sysroot crates that would be unable to work correctly with this RFC.
+
+All names are permitted for `builtin` crates rather than an allowlist to avoid
+Cargo needing to hardcode the names of many of the crates in the sysroot, which
+are inherently unstable.
+
+↩ [*Standard library dependencies*][standard-library-dependencies]
+
+### Why imply a direct dependency on all of `std`, `alloc` and `core`?
+[rationale-implicit-direct-deps]: #why-imply-a-direct-dependency-on-all-of-std-alloc-and-core
 
 When a crate depends on `std`, the user can also write `extern crate alloc` or
 similar for `core`. From Cargo's perspective this adds a direct dependency on
@@ -2225,10 +2230,6 @@ directory would create the possibility of rustc finding stale artifacts from
 previous builds. As a consequence, Cargo must be aware of the names of any
 direct dependencies of a crate and cannot rely on the fact that they are part of
 the dependency graph below the crate.
-
-A possible alternative is for Cargo to require all `builtin` dependencies to be
-explicit but validate the hierarchy to ensure users always include a `core`
-dependency. This is needlessly verbose.
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
