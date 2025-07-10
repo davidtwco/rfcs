@@ -134,6 +134,11 @@ core = { builtin = true }
 Any `builtin` dependency present in the manifest will disable the implicit
 dependency on `std`.
 
+When a `std` dependency is present an additional implicit dependency on the
+`test` crate is added for crates that are being tested with the default test
+harness. The `test` crate's name, but not its interface, will be stabilised so
+Cargo can refer to it.
+
 crates.io will accept crates published which have `builtin` dependencies.
 
 Standard library dependencies can be marked as `optional` and be enabled
@@ -358,9 +363,7 @@ and explicit dependencies on the standard library are not supported
 ([?][rationale-no-deps-in-build-deps]).
 
 Implicit and explicit dependencies on the standard library are supported for
-`dev-dependencies` in the same way as regular `dependencies`. An additional
-implicit dependency on the `test` crate is added for `dev-dependencies`.
-`test = { builtin = true }` can also be written explicitly.
+`dev-dependencies` in the same way as regular `dependencies`.
 
 ### Registries
 [registries]: #registries
@@ -543,7 +546,7 @@ library's release profile ([?][rationale-assume-release-profile]). If the user
 changes the default release profile or builds with a different profile then this
 could trigger a rebuild of the standard library
 ([?][rationale-ship-debug-std]), depending on the value of the `build-std`
-config as above.
+config as above. For example, with `build-std` set to `target-modifiers`:
 
 User's Cargo profile | Target modifiers changed? | Standard library profile
 -------------------- | ------------------------- | ------------------------
@@ -641,8 +644,8 @@ sources to this location. If the sources are not found, Cargo will emit an error
 and recommend the user download `rust-src` if using rustup.
 
 `rust-src` will contain the sources for the standard library crates as well as
-its vendored dependencies ([?][rationale-vendoring]). Sources of standard
-library dependencies will not be fetched from crates.io.
+its vendored dependencies ([?][rationale-vendoring]). As a consequence sources
+of standard library dependencies will not need be fetched from crates.io.
 
 > [!NOTE]
 >
@@ -677,24 +680,22 @@ which crates and flags are passed to the standard library. For example, if
 would need to be provided to `std` and `-Cpanic=unwind` passed to suggest that
 the compiler use that panic runtime.
 
-If the current crate has no dependency on `std` (i.e. have added an `alloc` or
-`core` dependency explicitly to opt-out of the implicit `std` dependency), then
-Cargo will not build either of the `panic_unwind` or `panic_abort` crates or
-pass `-Cpanic` to rustc. In this circumstance, if `panic` is set in the Cargo
-profile, then this value will be ignored and Cargo will emit a warning informing
-the user of this.
+If the current crate graph has no dependency on `std` (i.e. all crates have
+explicit `builtin` dependencies to opt-out of an implicit `std` dependency),
+then neither of the panic runtimes will be built. In this circumstance rustc
+will continue to throw an error when an unwinding panic strategy is chosen
 
-If the crate does depend on `std`, then Cargo's behaviour depends on whether or
+If the project does depend on `std` then Cargo's behaviour depends on whether or
 not `panic` is set in the profile:
 
 - If `panic` is not set in the profile then unwinding may still be the default
   for the target and Cargo will need to enable the `panic_unwind` feature to the
-  standard library just in case it is used.
+  `sysroot` crate (which passes it onto `std`) just in case it is used
 - If `panic` is set to "unwind" then the `panic_unwind` feature will be enabled
-  and `-Cpanic=unwind` will be passed.
-- If `panic` is set to "abort" then `-Cpanic=abort` will be passed.
+  and `-Cpanic=unwind` will be passed
+- If `panic` is set to "abort" then `-Cpanic=abort` will be passed
   - `panic_abort` is a non-optional dependency of `std` so it will always be
-    built.
+    built
 
 Tests, benchmarks, build scripts and proc macros continue to ignore the "panic"
 setting and `panic = "unwind"` is always used - which means the standard library
@@ -702,9 +703,9 @@ needs to be recompiled again if the user is using "abort". Once
 `panic-abort-tests` is stabilised, the standard library can be built with the
 profile's panic strategy even for tests and benchmarks.
 
-Cargo will not inspect the `RUSTFLAGS` environment variable for compilation
-flags that would require additional crates to be built for compilation to
-succeed.
+In line with Cargo's stance on not parsing the `RUSTFLAGS` environment variable,
+it will not be checked for compilation flags that would require additional
+crates to be built for compilation to succeed.
 
 *See the following sections for future possibilities:*
 
@@ -723,16 +724,15 @@ expected locations, typically populated by the `rust-std` components. Its
 behaviour can be forced by `-Clink-self-contained=true`, but is force-enabled
 for some targets and inferred for others.
 
-Rust can start to ship `rust-self-contained-$target` components for any targets
-which need it (including tier three targets). These components will contain the
-special object files normally included in `rust-std`, and will be distributed
-for all tiers of targets. While generally these objects are specific to the
-architecture and C runtime (CRT) (and so `rust-self-contained-$arch-$crt` could
-be sufficient and result in fewer overall components), it's technically possible
-that Rust could support two targets with the same architecture and same CRT but
-different versions of the CRT, so having target-specific components is most
-future-proof. These would replace the `self-contained` directory in existing
-`rust-std` components.
+Rust can start to ship `rust-self-contained` components for any targets which
+need it. These components will contain the special object files normally
+included in `rust-std`, and will be distributed for all tiers of targets. While
+generally these objects are specific to the architecture and C runtime (CRT)
+(and so `rust-self-contained-$arch-$crt` could be sufficient and result in fewer
+overall components), it's technically possible that Rust could support two
+targets with the same architecture and same CRT but different versions of the
+CRT, so having target-specific components is most future-proof. These would
+replace the `self-contained` directory in existing `rust-std` components.
 
 As long as these components have been downloaded, as well as any other support
 components, such as `rust-mingw`, rustc's `-Clink-self-contained` will be able
@@ -743,7 +743,10 @@ missing special object files.
 
 - [*Enable local recompilation of special object files/sanitizer runtimes*][future-recompile-special]
 
-### `compiler-builtins-mem`
+### Compiler builtins
+[compiler-builtins]: #compiler-builtins
+
+#### `compiler-builtins-mem`
 [compiler-builtins-mem]: #compiler-builtins-mem
 
 The `mem` feature of `compiler_builtins` (and the subsequent
@@ -758,6 +761,30 @@ It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
 *See the following sections for rationale/alternatives:*
 
 - [*Why not use weak linkage for `compiler-builtins/mem` symbols?*][rationale-no-weak-linkage]
+
+#### `compiler-builtins-c`
+[compiler-builtins-c]: #compiler-builtins-c
+
+The [`c` feature][background-dependencies] of `compiler_builtins` (which is also
+exposed by `core`, `alloc` and `std` through `compiler-builtins-c`) causes its
+`build.rs` file to build and link in more optimised C versions of the intrinsics
+it implements.
+
+It will not be enabled by default because it is possible that the target
+platform does not have a suitable C compiler available. The user being
+able to enable this manually will be enabled through work on
+features (see
+[*Allow enabling/disabling features with build-std*][future-features]).
+
+The default behaviour of `compiler_builtins` can and should be improved to allow
+`build-std` to match the prebuilt standard library as much as possible. The
+`compiler-rt` sources should be distributed with `rust-src` (as `libunwind` is
+today). By default `compiler_builtin`'s `build.rs` should make a best-effort
+attempt to find these sources and a suitable C compiler, and if built
+successfully configure the main crate to link these artifacts. If it fails to
+complete the build then `compiler_builtins` behaves as it does before without
+the `c` feature. The `c` feature itself behaves as before and does not tolerate
+build failures of `compiler-rt`.
 
 ### `libunwind`
 [libunwind]: #libunwind
@@ -908,13 +935,13 @@ any other dependency.
 >           "uses_default_features": true,
 >           "features": ["compiler-builtins-mem"],
 >           "target": null,
->           "public": truee
+>           "public": true
 >         }
 >       ],
 >       /* ... */
 >     }
 >   ]
-> }               
+> }
 > ```
 
 [`cargo miri`][cargo-miri] is not built into Cargo, it is shipped by miri, but
@@ -1037,6 +1064,13 @@ the rest of the toolchain that would need to be upheld:
 - No further customisation of the pre-built standard library through any means
   other than the profile in `Cargo.toml`
 - No new C dependencies on the standard library
+- The standard library continues to exist in its own workspace, with its own
+  lockfile
+- The name of the `test` crate becomes stable (but not its interface)
+- The `panic-unwind` and `compiler-builtins-mem` `sysroot` features become
+  stable so Cargo can refer to them
+  - This should not necessitate a "stable/unstable features" mechanism, rather a
+    guarantee from the library team that they're happy for these to stay
 
 > [!NOTE]
 >
@@ -1348,7 +1382,8 @@ standard library in the `rust-src` component is not permitted. Source
 replacement of the `builtin` source could be a way to support this in the future
 but it is not clear at this time what the exact use cases for doing this are and
 whether the Rust Project wishes to support this. For these reasons it is left as
-a possible future extension to this RFC.
+a possible future extension to this RFC. See
+[Allow `builtin` source replacement][future-source-replacement].
 
 ↩ [*Standard library dependencies*][standard-library-dependencies]
 
@@ -1818,7 +1853,10 @@ or modified standard libraries.
 ### Why vendor the standard library's dependencies?
 [rationale-vendoring]: #why-vendor-the-standard-librarys-dependencies
 
-Vendoring the standard library's dependencies has multiple advantages..
+Vendoring the standard library is possible since it currently has its own
+workspace, allowing the dependencies of just the standard library crates (and
+not the compiler or associated tools in `rust-lang/rust`) to be easily packaged.
+Doing so has multiple advantages..
 
 - Avoid needing to support standard library dependencies in `cargo vendor`
 - Avoid needing to support standard library dependencies in `cargo fetch`

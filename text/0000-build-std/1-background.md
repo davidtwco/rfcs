@@ -101,7 +101,7 @@ dependencies:
   when `-Clink-self-contained` is used
   - This only applies to Linux and Fuchsia targets
 - `compiler_builtins` has an optional `c` feature that will use optimised
-  routines from `compiler-rt` when enabled, which is enabled for the pre-built
+  routines from `compiler-rt` when enabled. It is enabled for the pre-built
   standard library
 - `compiler_builtins` has an optional `mem` feature that provides symbols
   for common memory routines (e.g. `memcpy`)
@@ -195,7 +195,10 @@ This avoids crates like `alloc` being added to the extern prelude, but rustc
 will still add `core` and `std` to it implicitly as without the use of
 `-Zbuild-std`.
 
-## Registries
+## Cargo
+[background-cargo]: #cargo
+
+### Registries
 [background-registries]: #registries
 
 Cargo's building of the dependency graph is driven by the registry index.
@@ -218,6 +221,24 @@ that end up in the dependency graph must be present a registry.
 Registries can have different policies for what crates are accepted. For
 example, crates.io does not permit publishing packages named `std` or `core` but
 other registries might.
+
+### Public/private dependencies
+[background-pubpriv-dependencies]: #publicprivate-dependencies
+
+[Public and private dependencies][rust#44663] are a currently unstable feature
+which enables tracking which dependencies form part of a library's public
+interface. This is intended to make it easier to avoid breaking semver
+compatibility when developing a library.
+
+With the `public-dependency` feature enabled dependencies are marked as
+"private" by default which can be overridden with a `public = true` declaration.
+
+Private dependencies are passed to rustc with an `priv` option to the `--extern`
+flag. Dependencies without this option are treated as public by rustc for
+compatibility reasons. A new lint is added to rustc,
+`exported-private-dependencies`, which is emitted if an item from a private
+ependency is exposed as public. In a future edition the lint will be `deny` by
+default.
 
 ## Panic strategies
 [background-panic-strategies]: #panic-strategies
@@ -286,6 +307,7 @@ linked together with different values of the flag set.
 
 [rfcs#3716]: https://rust-lang.github.io/rfcs/3716-target-modifiers.html
 [rust#46439]: https://github.com/rust-lang/rust/pull/46439
+[rust#44663]: https://github.com/rust-lang/rust/issues/44663
 
 [bootstrap-features-logic]: https://github.com/rust-lang/rust/blob/00b526212bbdd68872d6f964fcc9a14a66c36fd8/src/bootstrap/src/lib.rs#L732
 [bootstrap-features-toml]: https://github.com/rust-lang/rust/blob/00b526212bbdd68872d6f964fcc9a14a66c36fd8/bootstrap.example.toml#L816

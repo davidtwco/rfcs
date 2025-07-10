@@ -341,11 +341,11 @@ since August 2019 ([wg-cargo-std-aware#10]/[cargo#7216]).
 re-builds the standard library crates which rustc then uses instead of the
 pre-built standard library from the sysroot.
 
-`-Zbuild-std` builds `std` by default. `test` is also built if tests are being
-run. Optionally, users can provide the list of crates to be built, though this
-was intended as an escape hatch to work around bugs - the arguments to the flag
-are semi-unstable since the names of crates comprising the standard
-library are not stable.
+`-Zbuild-std` builds `std` by default. `test` is also built if `std` is being
+built and tests are being run with the default harness. Optionally, users can
+provide the list of crates to be built, though this was intended as an escape
+hatch to work around bugs - the arguments to the flag are semi-unstable since
+the names of crates comprising the standard library are not stable.
 
 Cargo has a hardcoded list of what dependencies need to be added for a given
 user-requested crate (i.e. `std` implies building `core`, `alloc`,
