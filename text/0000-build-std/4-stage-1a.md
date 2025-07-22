@@ -365,6 +365,19 @@ or workspace ([?][rationale-caching]).
 
 - [*Why not globally cache builds of the standard library?*][rationale-caching]
 
+## Generated documentation
+[generated-documentation]: #generated-documentation
+
+When running `cargo doc` for a project to generate documentation and rebuilding
+the standard library, the generated documentation for the user's crates will
+link to the locally generated documentation for the `core`, `alloc` and `std`
+crates, rather than the upstream hosted generation as is typical for non-locally
+built standard libraries.
+
+*See the following sections for rationale/alternatives:*
+
+- [*Why not link to hosted standard library documentation in generated docs?*][rationale-generated-docs]
+
 ## Cargo subcommands
 [cargo-subcommands]: #cargo-subcommands
 
@@ -859,6 +872,16 @@ this proposal to propose a special-cased mechanism for this that applies only to
 the standard library.
 
 ↩ [*Caching*][caching]
+
+## Why not link to hosted standard library documentation in generated docs?
+[rationale-generated-docs]: #why-not-link-to-hosted-standard-library-documentation-in-generated-docs
+
+Cargo would need to pass `-Zcrate-attr="doc(html_root_url=..)"` to the standard
+library crates when building them but doesn't have the required information to
+know what url to provide. Cargo would require knowledge of the current toolchain
+channel to build the correct url and doesn't know this.
+
+↩ [*Generated documentation*][generated-documentation]
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
