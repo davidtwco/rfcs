@@ -342,11 +342,17 @@ since August 2019 ([wg-cargo-std-aware#10]/[cargo#7216]).
 re-builds the standard library crates which rustc then uses instead of the
 pre-built standard library from the sysroot.
 
-`-Zbuild-std` builds `std` by default. `test` is also built if `std` is being
-built and tests are being run with the default harness. Optionally, users can
-provide the list of crates to be built, though this was intended as an escape
-hatch to work around bugs - the arguments to the flag are unstable since the
-names of crates comprising the standard library are not stable.
+Originally, `-Zbuild-std` always build `std` by default. Since the addition of
+the `std` field to target metadata in [rust#122305], Cargo only builds `std` by
+default if `metadata.std` is true.
+
+`test` is also built if `std` is being built and tests are being run with the
+default harness.
+
+Optionally, users can provide the list of crates to be built, though this was
+intended as an escape hatch to work around bugs - the arguments to the flag are
+unstable since the names of crates comprising the standard library are not
+stable.
 
 Cargo has a hardcoded list of what dependencies need to be added for a given
 user-requested crate (i.e. `std` implies building `core`, `alloc`,
@@ -479,6 +485,7 @@ features that are related or would be beneficial for build-std:
 [rfcs#1133]: https://github.com/rust-lang/rfcs/pull/1133
 [rfcs#2663]: https://github.com/rust-lang/rfcs/pull/2663
 [rfcs#3516]: https://rust-lang.github.io/rfcs/3516-public-private-dependencies.html
+[rust#122305]: https://github.com/rust-lang/rust/pull/128534
 [rust#128534]: https://github.com/rust-lang/rust/pull/128534
 [rust#67074]: https://github.com/rust-lang/rust/issues/67074
 [wg-cargo-std-aware#10]: https://github.com/rust-lang/wg-cargo-std-aware/issues/10
