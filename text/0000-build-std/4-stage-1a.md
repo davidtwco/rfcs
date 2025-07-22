@@ -124,6 +124,18 @@ newly-built, as appropriate).
 - [*What should the "always" and "off" values of `build-std` be named?*][unresolved-config-values]
 - [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
 
+## Interactions with `#![no_std]`
+[interactions-with-no_std]: #interactions-with-no_std
+
+Behaviour of crates using `#![no_std]` will change even if the standard library
+is rebuilt and passed via `--extern` to rustc. Due to `#![no_std]`, rustc will
+not automatically attempt to load std, but if the user writes `extern crate std`
+then the rebuilt std will be found.
+
+*See the following sections for rationale/alternatives:*
+
+- [*Why not replace `#![no_std]` as the source-of-truth for whether a crate depends on `std`?*][rationale-replace-no_std]
+
 ## `restricted_std`
 [restricted_std]: #restricted_std
 
@@ -642,6 +654,28 @@ a pre-built standard library. Procedural macros must link against the compiler
 which further limits potential use cases to those without `target-modifiers`.
 
 ↩ [*Proposal*][proposal]
+
+## Why not replace `#![no_std]` as the source-of-truth for whether a crate depends on `std`?
+[rationale-replace-no_std]: #why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std
+
+Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
+dependency on `std`. With `Cargo.toml` being used to express a dependency on the
+standard library (or lack thereof), it is unintuitive for there to be two
+sources-of-truth for this information.
+
+`#![no_std]` serves two purposes - it stops the compiler from loading `std` from
+the sysroot and adding `extern crate std`, and it prevents the user from
+depending on anything from `std` accidentally.
+
+`#![no_std]` could hypothetically be replaced by a lint to prevent use of the
+standard library and a change to the compiler so that it loads the `std`
+speculatively unless it is used.
+
+However, while rustc does have some support for speculatively loading crates, it
+is not possible to do so and not declare them as a dependency in cross-crate
+metadata.
+
+↩ [*Interactions with `#![no_std]`*][interactions-with-no_std]
 
 ### Why remove `restricted_std`?
 [rationale-remove-restricted-std]: #why-remove-restricted_std

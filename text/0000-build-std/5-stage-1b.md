@@ -144,7 +144,6 @@ files ([?][rationale-cargo-lock]).
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why not replace `#![no_std]` as the source-of-truth for whether a crate depends on `std`?*][rationale-replace-no_std]
 - [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][rationale-why-explicit-deps]
 - [*Why disallow builtin dependencies to be combined with other sources?*][rationale-builtin-other-sources]
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
@@ -538,28 +537,6 @@ This stage has no implications for the following Cargo subcommands:
 
 This section aims to justify all of the decisions made in the proposed design
 from [*Proposal*][proposal] and discuss why alternatives were not chosen.
-
-## Why not replace `#![no_std]` as the source-of-truth for whether a crate depends on `std`?
-[rationale-replace-no_std]: #why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std
-
-Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
-dependency on `std`. With `Cargo.toml` being used to express a dependency on the
-standard library (or lack thereof), it is unintuitive for there to be two
-sources-of-truth for this information.
-
-`#![no_std]` serves two purposes - it stops the compiler from loading `std` from
-the sysroot and adding `extern crate std`, and it prevents the user from
-depending on anything from `std` accidentally.
-
-`#![no_std]` could hypothetically be replaced by a lint to prevent use of the
-standard library and a change to the compiler so that it loads the `std`
-speculatively unless it is used.
-
-However, while rustc does have some support for speculatively loading crates, it
-is not possible to do so and not declare them as a dependency in cross-crate
-metadata.
-
-↩ [*Proposal*][proposal]
 
 ## Why explicitly declare dependencies on the standard library in `Cargo.toml`?
 [rationale-why-explicit-deps]: #why-explicitly-declare-dependencies-on-the-standard-library-in-cargotoml
