@@ -380,6 +380,10 @@ edition = "2024"
 std = { builtin = true } # <-- this would be added
 ```
 
+If attempting to add `core`, `alloc` or `std` with features then this will
+succeed but building the crate will require nightly, as described in
+[*Features*][features].
+
 [`cargo info`][cargo-info] will learn how to print information for the built-in
 `std`, `alloc` and `core` dependencies:
 
