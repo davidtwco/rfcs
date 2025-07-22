@@ -906,6 +906,11 @@ Alternatively, this could be enabled alongside another proposal which would
 allow the standard library to define some features as stable and others as
 unstable.
 
+As there are some features that Cargo will set itself when appropriate (e.g. to
+enable or disable [panic runtimes][panic-strategies] or
+[`compiler-builtins/mem`][compiler-builtins-mem]), Cargo may need to always
+prevent some otherwise stable features from being toggled as it controls those.
+
 ↩ [*Features*][features]
 
 ## Allow `builtin` source replacement
@@ -938,6 +943,9 @@ the standard library can depend on them.
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
+
+[panic-strategies]: ./4-stage-1a.md#panic-strategies
+[compiler-builtins-mem]: ./4-stage-1a.md#compiler-builtinsmem
 
 [cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html
 [cargo-bench]: https://doc.rust-lang.org/cargo/commands/cargo-bench.html
