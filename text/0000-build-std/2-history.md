@@ -480,10 +480,10 @@ features that are related or would be beneficial for build-std:
       are unlikely to be needed during debugging
 
 [motivation]: ./3-motivation.md
-[appendix-ii]: ./4-appendix-literature-review.md
-[appendix-ii-impl]: ./4-appendix-literature-review.md#implementation
-[appendix-ii-bugs]: ./4-appendix-literature-review.md#bugs-in-the-compiler-or-standard-library
-[appendix-ii-cargo-feats]: ./4-appendix-literature-review.md#cargo-feature-requests-narrowly-applied-to-build-std
+[appendix-ii]: ./9-appendix-literature-review.md
+[appendix-ii-impl]: ./9-appendix-literature-review.md#implementation
+[appendix-ii-bugs]: ./9-appendix-literature-review.md#bugs-in-the-compiler-or-standard-library
+[appendix-ii-cargo-feats]: ./9-appendix-literature-review.md#cargo-feature-requests-narrowly-applied-to-build-std
 
 [JOSH]: https://josh-project.github.io/josh/intro.html
 [rust-lang/cargo]: https://github.com/rust-lang/cargo
