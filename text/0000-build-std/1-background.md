@@ -146,10 +146,13 @@ or `core`, only `std`.
 Cargo and rustc support custom targets, defined in JSON files according to an
 unstable schema defined in the compiler. On nightly, users can dump the
 target-spec-json for an existing target using `--print target-spec-json`. This
-JSON can be saved in a file, tweaked and used as the argument to `--target` even
-on stable toolchains, though the JSON format is unstable. Custom targets do not
-have a pre-built standard library and so must use `-Zbuild-std`. Custom targets
-may have `restricted_std` set depending on their `cfg` configuration options.
+JSON can be saved in a file, tweaked and used as the argument to `--target`. It
+is unintentional but custom target specifications can be used with `--target`
+even on stable toolchains ([rust#71009] proposes destabilising this behaviour).
+However, as custom targets do not have a pre-built standard library and so must
+use `-Zbuild-std`, their use is relegated to nightly toolchains in practice.
+Custom targets may have `restricted_std` set depending on their `cfg`
+configuration options.
 
 ## Prelude
 [background-prelude]: #prelude
@@ -289,6 +292,7 @@ linked together with different values of the flag set.
 [rfcs#3716]: https://rust-lang.github.io/rfcs/3716-target-modifiers.html
 [rust#46439]: https://github.com/rust-lang/rust/pull/46439
 [rust#44663]: https://github.com/rust-lang/rust/issues/44663
+[rust#71009]: https://github.com/rust-lang/rust/issues/71009
 
 [bootstrap-features-logic]: https://github.com/rust-lang/rust/blob/00b526212bbdd68872d6f964fcc9a14a66c36fd8/src/bootstrap/src/lib.rs#L732
 [bootstrap-features-toml]: https://github.com/rust-lang/rust/blob/00b526212bbdd68872d6f964fcc9a14a66c36fd8/bootstrap.example.toml#L816
