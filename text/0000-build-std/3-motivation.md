@@ -3,7 +3,9 @@
 
 While the pre-built standard library has been sufficient for the majority of
 Rust users, there are a variety of use-cases which require the ability to
-re-build the standard library.
+re-build the standard library. This section lists all of the motivations that
+have been associated with build-std in its various iterations, but not all of
+these use cases will be addressed by this proposal.
 
 1. **Re-building the standard library with different codegen flags or profile**
    ([wg-cargo-std-aware#2])
