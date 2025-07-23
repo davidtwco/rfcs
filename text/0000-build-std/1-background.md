@@ -231,7 +231,9 @@ in `core`. `std`'s feature also adds an immediate abort to its `panic!` macro.
 ## Cargo
 [background-cargo]: #cargo
 
-Cargo's building of the dependency graph is driven by the registry index.
+Cargo's building of the dependency graph is largely driven by the registry
+index, except for crates from `git` or `path` sources.
+
 [Cargo registries][cargo-docs-registry], like crates.io, are centralised sources
 for crates. A registry's index is the interface between Cargo and the registry
 that Cargo queries to know which crates are available, what their dependencies
@@ -242,11 +244,12 @@ protocol which caches the registry on disk, or using a sparse protocol which
 exposes the index over HTTP and allows Cargo to avoid Cargo having a local copy
 of the whole index, which has become quite large for crates.io.
 
-Each crates in the registry has a JSON file, following
+Each crate in the registry has a JSON file, following
 [a defined schema][cargo-json-schema]. Crates may refer to those in other
-registries, but all crates in the dependency graph must exist in a registry. As
-the registry index drives the building of Cargo's dependency graph, all crates
-that end up in the dependency graph must be present a registry.
+registries, but all non-`path`/`git` crates in the dependency graph must exist
+in a registry. As the registry index drives the building of Cargo's dependency
+graph, all crates that end up in the dependency graph must be present a
+registry.
 
 Registries can have different policies for what crates are accepted. For
 example, crates.io does not permit publishing packages named `std` or `core` but
