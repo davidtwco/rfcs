@@ -153,7 +153,7 @@ It could be named "target-modifiers" or "automatic".
 ## What should the interface to rustc compatibility checking be?
 [unresolved-rustc-compat-interface]: #what-should-the-interface-to-rustc-compatibility-checking-be
 
-Should it an `--emit` flag? a `--print` flag?
+Should it be an `--emit` flag? A `--print` flag?
 
 ↩ [*Proposal*][proposal]
 

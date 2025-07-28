@@ -43,7 +43,7 @@ useful for users of tier three targets.
 > as is feasible.
 
 Alongside `build-std`, a `build-std-crate` key will be introduced
-([?][rationale-build-std-crate]), which can be used to specify which crate from
+([?][rationale-build-std-crate]), which can be used to specify which crates from
 the standard library is to be built. Only "core", "alloc" and "std" are valid
 values for `build-std-crate`.
 
@@ -71,7 +71,7 @@ standard library will determine which crates are built instead. Otherwise,
 >   the dependencies of the `core`, `alloc` or `std` standard library crates
 >   individually (via profile overrides, for example).
 > 
-> - The profiles defined by the standard library will be used.
+> - The profile defined by the standard library will be used.
 >
 > Cargo will resolves the dependencies of opaque dependencies, such as the
 > standard library, separately in their own workspaces. The "roots" of such a
@@ -128,10 +128,10 @@ times - once for each target in the project.
 ## Interactions with `#![no_std]`
 [interactions-with-no_std]: #interactions-with-no_std
 
-Behaviour of crates using `#![no_std]` will change even if the standard library
-is rebuilt and passed via `--extern` to rustc. Due to `#![no_std]`, rustc will
-not automatically attempt to load std, but if the user writes `extern crate std`
-then the rebuilt std will be found.
+Behaviour of crates using `#![no_std]` will not change whether or not `std` is
+rebuilt and passed via `--extern` to rustc, and `#![no_std]` will still be
+required in order for `rustc` to not attempt to load `std` and add it to the
+extern prelude.
 
 *See the following sections for rationale/alternatives:*
 
@@ -365,8 +365,8 @@ enable this manually will be enabled through work on features (see
 [caching]: #caching
 
 Standard library artifacts built by build-std will not be shared between crates
-or workspaces, as they only exist in the `target` directory of a specific crate
-or workspace ([?][rationale-caching]).
+or workspaces, as they only exist in Cargo's target directory for a specific
+crate or workspace ([?][rationale-caching]).
 
 *See the following sections for rationale/alternatives:*
 
@@ -518,7 +518,7 @@ There are various alternatives to putting `build-std` in the Cargo configuration
 
 2. build-std could be enabled or disabled in the `Cargo.toml`. However, under
    which conditions the standard library is rebuilt is better determined by the
-   user of Cargo, rather than the project being built.
+   user of Cargo, rather than the package being built.
 
    A user may want to never rebuild the standard library so as to avoid
    invalidating the guarantees of their qualified toolchain, or may want to
@@ -764,14 +764,17 @@ providing an empty path.
 ### Why use `noprelude` with `--extern`?
 [rationale-noprelude-with-extern]: #why-use-noprelude-with---extern
 
-The `noprelude` modifier for `--extern` is necessary for use of the `--extern`
-flag to be equivalent to using a modified sysroot.
+rustc's existing behaviour of implicitly loading `std` and adding it to the
+extern prelude will not be changed as part of this RFC. Adding The `noprelude`
+modifier for `--extern` is necessary for use of the `--extern` flag to be
+equivalent to loading from a sysroot.
 
 Without `noprelude`, rustc implicitly inserts a `extern crate $name` when using
 `--extern`. As a consequence, if a newly-built `alloc` were passed using
-`--extern alloc=alloc.rlib` then `extern crate alloc` would not be required, but
-it would be if the pre-built `alloc` could be used. This difference in how a
-crate is made available to rustc should not be observable to the user.
+`--extern alloc=alloc.rlib` then `extern crate alloc` would not be required to
+use the locally-built `alloc`, but it would be to use the pre-built `alloc`. This
+difference in how a crate is made available to rustc should not be observable to
+the user.
 
 ↩ [*Preventing implicit sysroot dependencies*][preventing-implicit-sysroot-dependencies]
 
@@ -849,9 +852,9 @@ stable toolchain would require that it be possible to build `core` without
 nightly.
 
 It is not sufficient for rustc to special-case the `core`, `alloc` and `std`
-crate names as when being built as part of the standard library, dependencies of
-the standard library also use unstable features and so these crate would also
-need such special-casing, which is not practical.
+crate names as, when being built as part of the standard library, dependencies
+of the standard library also use unstable features and it is not practical to
+special-case all of these crates.
 
 ↩ [*Building the standard library on a stable toolchain*][building-the-standard-library-on-a-stable-toolchain]
 
