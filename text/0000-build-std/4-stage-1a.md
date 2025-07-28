@@ -57,6 +57,9 @@ will not be used unless explicitly set and the crate graph's dependencies on the
 standard library will determine which crates are built instead. Otherwise,
 `build-std-crate` will default to "std".
 
+If `std` is to be built and Cargo is building a test using the default test
+harness then Cargo will also build the `test` crate.
+
 > [!NOTE]
 >
 > Inspired by the concept of [opaque dependencies][Opaque dependencies], the
@@ -74,18 +77,17 @@ standard library will determine which crates are built instead. Otherwise,
 > - The profile defined by the standard library will be used.
 >
 > Cargo will resolves the dependencies of opaque dependencies, such as the
-> standard library, separately in their own workspaces. The "roots" of such a
-> resolve are defined as the unified set of packages that any crate in the
-> dependency graph has a explicit dependency on and those which Cargo infers a
-> direct dependency on. A dependency on the roots are added to all crates in the
-> "parent" resolve.
+> standard library, separately in their own workspaces. The root of such a
+> resolve will be the crate specified in `build-std-crates`, or, if stage 1b is
+> implemented, the unified set of packages that any crate in the dependency has
+> a direct dependency on. A dependency on the relevant roots are added to all
+> crates in the "parent" resolve.
 >
 > Regardless of which standard library crates are being built, Cargo will build
 > the `sysroot` crate of the standard library workspace. `alloc` and `std` will
 > be optional dependencies of the `sysroot` crate which will be enabled when the
-> user has requested them. The sysroot always depends on the `proc_macro` and
-> `test` crates. Panic runtimes are dependencies of `std` and will be enabled
-> depending on the features that Cargo passes to `std` (see
+> user has requested them. Panic runtimes are dependencies of `std` and will be
+> enabled depending on the features that Cargo passes to `std` (see
 > [*Panic strategies*][panic-strategies]).
 >
 > rustc loads panic runtimes in a different way to most dependencies, and
@@ -680,9 +682,10 @@ which further limits potential use cases to those without `target-modifiers`.
 [rationale-replace-no_std]: #why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std
 
 Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
-dependency on `std`. With `Cargo.toml` being used to express a dependency on the
-standard library (or lack thereof), it is unintuitive for there to be two
-sources-of-truth for this information.
+dependency on `std`. With `build-std-crates` or explicit dependencies (as in
+[Stage 1b][stage1b]) allowing the user to specify a dependency on the standard
+library, it is unintuitive for there to be two sources-of-truth for this
+information.
 
 `#![no_std]` serves two purposes - it stops the compiler from loading `std` from
 the sysroot and adding `extern crate std`, and it prevents the user from
