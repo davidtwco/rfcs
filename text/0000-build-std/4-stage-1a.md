@@ -341,11 +341,11 @@ standard library workspace.
 
 The `mem` feature of `compiler_builtins` (and the subsequent
 `compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
-`compiler_builtins/mem`) is required by `no_std` crates because `libc` does not
-provide these symbols without `std`.
+`compiler_builtins/mem`) is required by `no_std` crates as a `std` dependency
+will not be providing these symbols through its dependency on `libc`.
 
 It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
-`core` be enabled when `std` is not in the crate graph
+`core` be enabled when `libc` is not in the crate graph
 ([?][rationale-no-weak-linkage]).
 
 *See the following sections for rationale/alternatives:*
