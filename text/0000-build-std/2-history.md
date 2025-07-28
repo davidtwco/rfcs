@@ -174,6 +174,12 @@ categories:
    symbols provided by `libc`. compiler-builtins is also built with a large
    number of compilation units to force each function into a different unit.
 
+   ['unwind'][wg-cargo-std-aware#29] links to the system's version of libunwind.
+   Enabling the `llvm-libunwind` feature, `-Clink-self-contained` or
+   `-Ctarget-feature=+crt-static` will statically link to the pre-built
+   `libunwind` distributed in the standard library component for the target, if
+   present.
+
    [Sanitizers][wg-cargo-std-aware#17], when enabled, require a sanitizer
    runtime to be present. These are currently built by bootstrap and part of
    LLVM.
