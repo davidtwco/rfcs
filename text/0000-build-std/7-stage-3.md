@@ -88,6 +88,39 @@ the standard library if [*Stage 1b*][stage1b] was implemented.
 
 - [*What should the "match-profile" and "compatible-profile" values of `build-std` be named?*][unresolved-naming]
 
+## Stability guarantees
+[stability-guarantees]: #stability-guarantees
+
+build-std enables a much greater array of configurations of the standard library
+to exist and be produced by stable toolchains than the single configuration that
+is distributed today.
+
+It is not feasible for the Rust project to test every combination of profile
+configuration, Cargo feature, target and standard library crate. As such, the
+stability of build-std as a mechanism must be separated from the stability
+guarantees which apply to configurations of the standard library it enables.
+
+For example, while a stable build-std mechanism may permit the standard library
+to be built for a tier three target, the Rust project continues to make no
+commitments or guarantees that the standard library for that target will
+function correctly or build at all. Even on a tier one target, the Rust project
+cannot test every possible variation of the standard library that build-std
+enables.
+
+The tier of a target no longer determines whether the availability of the
+standard library, but rather the level of support provided for the standard
+library on the target.
+
+Cargo and Rust project documentation will clearly document the configurations
+which are tested upstream and are guaranteed to work. Any other configurations
+are supported on a strictly best-effort basis. The Rust project may later choose
+to provide more guarantees for some well-tested configurations (e.g. enabling
+sanitisers).
+
+There are also no guarantees about the exact configuration of the standard
+library. Over time, the standard library built by build-std could be changed to
+be closer to that of the pre-built standard library.
+
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
