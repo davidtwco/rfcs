@@ -363,7 +363,8 @@ It will not be enabled by default because it is possible that the target
 platform does not have a suitable C compiler available. The user being able to
 enable this manually will be enabled through work on features (see
 [*Allow enabling/disabling features with build-std*][future-features] from Stage
-1b).
+1b). Once the user can enable `compiler-builtins/c`, they will need to manually
+configure `CFLAGS` to ensure that the C components will link with Rust code.
 
 ## Caching
 [caching]: #caching
