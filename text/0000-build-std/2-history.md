@@ -386,8 +386,8 @@ none of the crates.io dependencies).
 
 When `-Zbuild-std` has been passed, Cargo creates a second workspace for the
 standard library based on the `Cargo.{toml,lock}` from the `rust-src` component.
-Originally this was a virtual workspace, prior to the standard library having a
-separate workspace from the compiler which could be used independently
+Originally this was an in-memory workspace, prior to the standard library having
+a separate workspace from the compiler which could be used independently
 ([rust#128534]/[cargo#14358]). This workspace is then resolved separately and
 the resolve is combined with the user's resolve to produce a dependency graph of
 things to build with the user's crates depending on the standard library's
