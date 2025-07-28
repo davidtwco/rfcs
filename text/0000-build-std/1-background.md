@@ -248,8 +248,8 @@ Each crate in the registry has a JSON file, following
 [a defined schema][cargo-json-schema]. Crates may refer to those in other
 registries, but all non-`path`/`git` crates in the dependency graph must exist
 in a registry. As the registry index drives the building of Cargo's dependency
-graph, all crates that end up in the dependency graph must be present a
-registry.
+graph, all non-`path`/`git` crates that end up in the dependency graph must be
+present a registry.
 
 Registries can have different policies for what crates are accepted. For
 example, crates.io does not permit publishing packages named `std` or `core` but
