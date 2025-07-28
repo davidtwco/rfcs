@@ -323,7 +323,8 @@ missing special object files.
 [compiler-builtins]: #compiler-builtins
 
 `compiler-builtins` is always built with `-Ccodegen-units=10000` to force each
-intrinsic into its own object file to avoid symbol clashes with libgcc.
+intrinsic into its own object file to avoid symbol clashes with libgcc. This is
+currently enforced with a profile override in the standard library's workspace.
 
 rustc will automatically use a large number of codegen units for the
 `compiler-builtins` crate, unless manually specified using the `-Ccodegen-units`
