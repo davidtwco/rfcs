@@ -217,12 +217,6 @@ of standard library dependencies will not need be fetched from crates.io.
 - [*Why vendor standard library dependencies?*][rationale-vendoring]
 - [*Why not check if `rust-src` has been modified?*][rationale-src-modifications]
 
-### `libunwind`
-[libunwind]: #libunwind
-
-`libunwind`'s sources are included in the `rust-src` component so that they can
-be used as part of the standard library build on targets which require it.
-
 ## Panic strategies
 [panic-strategies]: #panic-strategies
 
@@ -261,6 +255,15 @@ In line with Cargo's stance on not parsing the `RUSTFLAGS` environment variable,
 it will not be checked for compilation flags that would require additional
 crates to be built for compilation to succeed.
 
+> [!NOTE]
+>
+> The `unwind` crate will continue to link to the system's `libunwind` which
+> will need to match the target modifiers used by the standard library to
+> guarantee a successful build. Likewise, if `llvm-libunwind`,
+> `-Clink-self-contained=yes` or `-Ctarget-feature=+crt-static` are used and the
+> distributed `libunwind` is used then it will also need to match the target
+> modifiers of the standard library to guarantee a successful build.
+
 *See the following sections for future possibilities:*
 
 - [*Avoid building `panic_unwind` unnecessarily*][future-panic_unwind]
@@ -277,14 +280,14 @@ invoked ([?][rationale-implied-bootstrap]). Cargo will not need to use
 
 - [*Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?*][rationale-implied-bootstrap]
 
-## Special object files
-[special-object-files]: #special-object-files
+## Self-contained objects
+[self-contained-objects]: #self-contained-objects
 
 A handful of targets require linking against special object files, such as
 `windows-gnu`, `linux-musl` and `wasi` targets. For example, `linux-musl`
 targets require `crt1.o`, `crti.o`, `crtn.o`, etc.
 
-Since [rust#76185]/[compiler-team#343], the compiler has a stable
+Since [rust#76158]/[compiler-team#343], the compiler has a stable
 `-Clink-self-contained` flag which will look for special object files in
 expected locations, typically populated by the `rust-std` components. Its
 behaviour can be forced by `-Clink-self-contained=true`, but is force-enabled
@@ -299,6 +302,9 @@ overall components), it's technically possible that Rust could support two
 targets with the same architecture and same CRT but different versions of the
 CRT, so having target-specific components is most future-proof. These would
 replace the `self-contained` directory in existing `rust-std` components.
+
+Similarly, for any architectures which require it, LLVM's `libunwind` will be
+built and shipped in the `rust-self-contained` component.
 
 As long as these components have been downloaded, as well as any other support
 components, such as `rust-mingw`, rustc's `-Clink-self-contained` will be able
@@ -942,7 +948,7 @@ These files are shipped pre-compiled for relevant targets and are not compiled
 locally. If a user wishes to customise the compilation of these files like the
 standard library, then there is no mechanism to do so.
 
-↩ [*Special object files*][special-object-files]
+↩ [*Self-contained objects*][self-contained-objects]
 
 ## Allow choosing the crate type of the standard library?
 [future-crate-type]: #allow-choosing-the-crate-type-of-the-standard-library
@@ -964,8 +970,9 @@ produced by build-std.
 
 [compiler-builtins#411]: https://github.com/rust-lang/compiler-builtins/pull/411
 [compiler-team#343]: https://github.com/rust-lang/compiler-team/issues/343
-[rust#76185]: https://github.com/rust-lang/rust/pull/76185
+[rust#76158]: https://github.com/rust-lang/rust/pull/76158
 [rust#71009]: https://github.com/rust-lang/rust/pull/71009
+[rust#84124]: https://github.com/rust-lang/rust/pull/84124
 [rust#135395]: https://github.com/rust-lang/rust/pull/135395
 
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
