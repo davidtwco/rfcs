@@ -328,10 +328,10 @@ and cannot otherwise be found in the registry.
 >
 > The keys `req`, `registry` and `package` from `deps` are not required per the
 > limitations on builtin dependencies.
-> 
+>
 > The key is optional and its default value will be the implicit builtin
 > dependencies:
-> 
+>
 > ```json
 > "builtin_deps" : [
 >     {
@@ -679,7 +679,7 @@ circumstance, then they would be located in a `-L dependency=` directory, which
 rustc would not search when loading a crate from `extern crate`.
 
 > [!NOTE]
-> 
+>
 > `alloc` and `core` must always be passed with `--extern`.
 
 ↩ [*Proposal*][proposal]
