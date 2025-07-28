@@ -96,13 +96,14 @@ standard library will determine which crates are built instead. Otherwise,
 >
 > The standard library will always be a non-incremental build
 > ([?][rationale-incremental]), with no `depinfo` produced, and only a `rlib`
-> produced (no `dylib`) ([?][rationale-no-dylib]). It will be built into the
+> produced (no `dylib`) ([?][rationale-no-dylib]). It will be built in the Cargo
 > `target` directory of the crate or workspace like any other dependency.
 
 The host pre-built standard library will always be used for procedural macros
-and build scripts ([?][rationale-sysroot-for-host-deps]). Artifact dependencies
-use the same standard library as the rest of the crate (pre-built or
-newly-built, as appropriate).
+and build scripts ([?][rationale-sysroot-for-host-deps]). Multi-target projects
+(resulting from the `target` field in artifact dependencies or the use of
+`per-pkg-target` fields) may result in the standard library being built multiple
+times - once for each target in the project.
 
 *See the following sections for rationale/alternatives:*
 
