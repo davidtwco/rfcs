@@ -5,6 +5,7 @@ There are many features proposed in this RFC for different parts of the project:
 
 - Bootstrap/infra/release
   - [Vendoring standard library sources into `rust-src`](./4-stage-1a.md#vendored-rust-src) (Stage 1a)
+  - [`rust-src` is a default component](./4-stage-1a.md#vendored-rust-src) (Stage 1a)
   - [`rust-self-contained` components](./4-stage-1a.md#special-object-files) (Stage 1a)
   - [Testing build-std in rust-lang/rust CI][constraints-on-the-standard-library]
 - Cargo

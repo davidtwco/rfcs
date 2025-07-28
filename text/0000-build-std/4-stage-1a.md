@@ -199,8 +199,9 @@ explicit and implicit standard library dependencies.
 When it is necessary to build the standard library, Cargo will look for sources
 in a fixed location in the sysroot ([?][rationale-custom-src-path]):
 `lib/rustlib/src`. rustup's `rust-src` component downloads standard library
-sources to this location. If the sources are not found, Cargo will emit an error
-and recommend the user download `rust-src` if using rustup.
+sources to this location and will be made a default component. If the sources
+are not found, Cargo will emit an error and recommend the user download
+`rust-src` if using rustup.
 
 `rust-src` will contain the sources for the standard library crates as well as
 its vendored dependencies ([?][rationale-vendoring]). As a consequence sources
