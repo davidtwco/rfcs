@@ -690,6 +690,10 @@ Furthermore, when `restricted_std` applies, users must add
 (conditionally, only for affected targets), and have no mechanism for opting-in
 on behalf of their dependencies (including first-party crates like `libtest`).
 
+It is still valuable for the standard library to be able to compile on as many
+targets as possible using the `unsupported` module in its platform abstraction
+layer, but this mechanism does not use `restricted_std`.
+
 ↩ [*`restricted_std`*][restricted_std]
 
 ### Why disallow custom targets?
