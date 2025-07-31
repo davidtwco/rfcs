@@ -959,7 +959,6 @@ produced by build-std.
 [compiler-team#343]: https://github.com/rust-lang/compiler-team/issues/343
 [rust#76158]: https://github.com/rust-lang/rust/pull/76158
 [rust#71009]: https://github.com/rust-lang/rust/pull/71009
-[rust#84124]: https://github.com/rust-lang/rust/pull/84124
 [rust#135395]: https://github.com/rust-lang/rust/pull/135395
 
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
