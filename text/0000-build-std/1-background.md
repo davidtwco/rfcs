@@ -125,6 +125,10 @@ enable or disable these features. The default set of features is determined by
 key in `bootstrap.toml`][bootstrap-features-toml]. The enabled features are
 often different depending on the target.
 
+It is also common for user crates to depend on the standard library (via
+`#![no_std]`) conditional on Cargo features being enabled or disabled (e.g. a
+`std` feature or if `--test` is used).
+
 ### Target support
 [background-target-support]: #target-support
 
