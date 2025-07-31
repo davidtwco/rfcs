@@ -446,6 +446,18 @@ Cargo's subcommands including `metadata`, `clean`, `vendor`, `pkgid` and the
 `-p` options for various commands. Support for `cargo fetch` was implemented in
 [cargo#10129].
 
+## `no_std` Usability
+[no_std-usability]: #no_std-usability
+
+There are also issues related to the usability of `no_std` crates:
+
+- Discoverability of `no_std` crates is difficult with a mix of categories
+  (`no-std`) and keywords (`nostd`/`no_std`) that are not used consistently by
+  `no_std` crates ([crates.io#7306]).
+
+- `no_std` crates can accidentally and easily depend on crates that use `std`
+  which can result in build failures in some targets ([cargo#8798]).
+
 ## Related work
 [related-work]: #related-work
 
@@ -488,6 +500,8 @@ features that are related or would be beneficial for build-std:
 [cargo#7216]: https://github.com/rust-lang/cargo/pull/7216
 [cargo#7421]: https://github.com/rust-lang/cargo/pull/7421
 [cargo#8490]: https://github.com/rust-lang/cargo/pull/8490
+[cargo#8798]: https://github.com/rust-lang/cargo/issues/8798
+[crates.io#7306]: https://github.com/rust-lang/crates.io/pull/7306
 [rfcs#1133]: https://github.com/rust-lang/rfcs/pull/1133
 [rfcs#2663]: https://github.com/rust-lang/rfcs/pull/2663
 [rfcs#3516]: https://rust-lang.github.io/rfcs/3516-public-private-dependencies.html

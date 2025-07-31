@@ -1347,6 +1347,23 @@ general feature for Cargo that could then apply to build-std too:
     fixed by a change to that mechanism, rather than anything specific to
     build-std
 
+## Other issues
+[a1-other-issues]: #other-issues
+
+There are a handful of other issues that are not directly referencing build-std,
+but which affect related features in the toolchain, such as `no_std` crates:
+
+- **[keyword nostd vs no_std vs category no-std][crates.io#7306]**, [gnzlbg], Feb 2018
+  - There is `no-std` category as well as a `nostd` and `no_std` keywords used
+    by crates. Not every crate which uses the `nostd`/`no_std` keywords also
+    uses the `no-std` category, and vice versa, making it harder to list all
+    `no_std`-supporting crates with a single search.
+- **[no_std crates should not permit non-no_std dependencies][cargo#8798]**, [zesterer], Oct 2020
+  - Cargo permits `no_std` crates to depend on crates that use the standard
+    library. When working with a target that does not ship the `std` crate, the
+    presence of these crates in the dependency graph can result in unexpected
+    build failures.
+
 [history]: ./2-history.md
 
 [JOSH]: https://josh-project.github.io/josh/intro.html
@@ -1395,6 +1412,7 @@ general feature for Cargo that could then apply to build-std too:
 [cargo#8177]: https://github.com/rust-lang/cargo/pull/8177
 [cargo#8490]: https://github.com/rust-lang/cargo/pull/8490
 [cargo#8733]: https://github.com/rust-lang/cargo/issues/8733
+[cargo#8798]: https://github.com/rust-lang/cargo/issues/8798
 [cargo#8834]: https://github.com/rust-lang/cargo/pull/8834
 [cargo#8945]: https://github.com/rust-lang/cargo/issues/8945
 [cargo#8962]: https://github.com/rust-lang/cargo/issues/8962
@@ -1404,6 +1422,7 @@ general feature for Cargo that could then apply to build-std too:
 [cargo#9976]: https://github.com/rust-lang/cargo/issues/9976
 [compiler-builtins#411]: https://github.com/rust-lang/compiler-builtins/pull/411
 [compiler-builtins#532]: https://github.com/rust-lang/compiler-builtins/pull/532
+[crates.io#7306]: https://github.com/rust-lang/crates.io/pull/7306
 [internals.r-l.o: Fleshing out libstd scenarios]: https://internals.rust-lang.org/t/fleshing-out-libstd-scenarios/4206
 [internals.r-l.o: Refactoring libstd for ultimate portability]: https://internals.rust-lang.org/t/refactoring-std-for-ultimate-portability/4301
 [jamesmunns/rfcs#1]: https://github.com/jamesmunns/rfcs/pull/1
@@ -1564,6 +1583,7 @@ general feature for Cargo that could then apply to build-std too:
 [fee1-dead]: https://github.com/fee1-dead
 [george-hopkins]: https://github.com/george-hopkins
 [ghost]: https://github.com/ghost
+[gnzlbg]: https://github.com/gnzlbg
 [harmou01]: https://github.com/harmou01
 [hnj2]: https://github.com/hnj2
 [illuzen]: https://github.com/illuzen
@@ -1591,3 +1611,4 @@ general feature for Cargo that could then apply to build-std too:
 [wcampbell0x2a]: https://github.com/wcampbell0x2a
 [weihanglo]: https://github.com/weihanglo
 [yogh333]: https://github.com/yogh333
+[zesterer]: https://github.com/zesterer
