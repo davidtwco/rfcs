@@ -161,6 +161,7 @@ files ([?][rationale-cargo-lock]).
 
 *See the following sections for future possibilities:*
 
+- [*Warn when `no_std` crates accidentally have a dependency on `std`*][future-no_std-warning]
 - [*Allow `builtin` source replacement*][future-source-replacement]
 - [*Remove `rustc_dep_of_std`*][future-rustc_dep_of_std]
 
@@ -579,6 +580,11 @@ the standard syntax for this would be necessary, such as a flag (e.g.
 `-Zbuild-std-features`) or option in Cargo's configuration. This also applies to
 optional dependencies, public/private features, etc.
 
+Users already use Cargo features to toggle `#![no_std]` in crates which support
+building without the standard library. When dependencies on the standard library
+are exposed in `Cargo.toml` then they can be made optional and enabled by the
+existing Cargo features that crates already have.
+
 ↩ [*Proposal*][proposal]
 
 ## Why disallow builtin dependencies to be combined with other sources?
@@ -874,6 +880,17 @@ be needlessly different to existing packages.
 [future-possibilities]: #future-possibilities
 
 There are many possible follow-ups to Stage 1b:
+
+## Warn when `no_std` crates accidentally have a dependency on `std`
+[future-no_std-warning]: #warn-when-no_std-crates-accidentally-have-a-dependency-on-std
+
+Cargo could emit a warning or lint when a root crate without an explicit
+dependency on `std` or `alloc` has a dependency on `std` or `alloc` via a
+dependency. When writing a `no_std` crate, then it is desirable to avoid any
+unexpected dependency on standard library crates and this would cause the crate
+to fail to compile on targets where those crates are not supported.
+
+↩ [*Proposal*][proposal]
 
 ## Allow `builtin` source replacement
 [future-source-replacement]: #allow-builtin-source-replacement

@@ -668,11 +668,9 @@ depending on anything from `std` accidentally.
 
 `#![no_std]` could hypothetically be replaced by a lint to prevent use of the
 standard library and a change to the compiler so that it loads the `std`
-speculatively unless it is used.
-
-However, while rustc does have some support for speculatively loading crates, it
-is not possible to do so and not declare them as a dependency in cross-crate
-metadata.
+speculatively unless it is used. However, while rustc does have some support for
+speculatively loading crates, it is not possible to do so and not declare them
+as a dependency in cross-crate metadata.
 
 ↩ [*Interactions with `#![no_std]`*][interactions-with-no_std]
 
