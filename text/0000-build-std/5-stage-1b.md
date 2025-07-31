@@ -162,6 +162,7 @@ files ([?][rationale-cargo-lock]).
 *See the following sections for future possibilities:*
 
 - [*Allow `builtin` source replacement*][future-source-replacement]
+- [*Remove `rustc_dep_of_std`*][future-rustc_dep_of_std]
 
 ## Non-`builtin` standard library dependencies
 [non-builtin-standard-library-dependencies]: #non-builtin-standard-library-dependencies
@@ -874,6 +875,32 @@ be needlessly different to existing packages.
 
 There are many possible follow-ups to Stage 1b:
 
+## Allow `builtin` source replacement
+[future-source-replacement]: #allow-builtin-source-replacement
+
+This involves allowing the user to blanket-override the standard library sources
+with a `[source.builtin]` section of the Cargo configuration.
+
+As [rationale-source-replacement] details it is unclear if users need to do this
+or if it's even something the Rust project wishes to support.
+
+↩ [*Proposal*][proposal]
+
+## Remove `rustc_dep_of_std`
+[future-rustc_dep_of_std]: #remove-rustc_dep_of_std
+
+With first-class explicit dependencies on the standard library,
+`rustc_dep_of_std` is rendered unnecessary and explicit dependencies on the
+standard library can always be present in the `Cargo.toml` of the standard
+library's dependencies.
+
+The `core`, `alloc` and `std` dependencies can be patched in the standard
+library's workspace to point to the local copy of the crates. This avoids
+`crates.io` dependencies needing to add support for `rustc_dep_of_std` before
+the standard library can depend on them.
+
+↩ [*Proposal*][proposal]
+
 ## Allow enabling/disabling features with build-std
 [future-features]: #allow-enablingdisabling-features-with-build-std
 
@@ -893,32 +920,6 @@ enable or disable [panic runtimes][panic-strategies] or
 prevent some otherwise stable features from being toggled as it controls those.
 
 ↩ [*Features*][features]
-
-## Allow `builtin` source replacement
-[future-source-replacement]: #allow-builtin-source-replacement
-
-This involves allowing the user to blanket-override the standard library sources
-with a `[source.builtin]` section of the Cargo configuration.
-
-As [rationale-source-replacement] details it is unclear if users need to do this
-or if it's even something the Rust project wishes to support.
-
-↩ [*Proposal*][proposal]
-
-## `rustc_dep_of_std`
-[future-rustc_dep_of_std]: #rustc_dep_of_std
-
-With first-class explicit dependencies on the standard library,
-`rustc_dep_of_std` is rendered unnecessary and explicit dependencies on the
-standard library can always be present in the `Cargo.toml` of the standard
-library's dependencies.
-
-The `core`, `alloc` and `std` dependencies can be patched in the standard
-library's workspace to point to the local copy of the crates. This avoids
-`crates.io` dependencies needing to add support for `rustc_dep_of_std` before
-the standard library can depend on them.
-
-↩ [*Proposal*][proposal]
 
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
