@@ -236,20 +236,37 @@ index, except for crates from `git` or `path` sources.
 
 [Cargo registries][cargo-docs-registry], like crates.io, are centralised sources
 for crates. A registry's index is the interface between Cargo and the registry
-that Cargo queries to know which crates are available, what their dependencies
-are, etc. crates.io's registry index is a Git repository -
-[rust-lang/crates.io-index] - which is updated automatically by crates.io when
-crates are published, yanked, etc. Cargo can query registries using a Git
-protocol which caches the registry on disk, or using a sparse protocol which
-exposes the index over HTTP and allows Cargo to avoid Cargo having a local copy
-of the whole index, which has become quite large for crates.io.
+that Cargo queries to know which versions are available for any given crate,
+what its dependencies are, etc.
 
-Each crate in the registry has a JSON file, following
-[a defined schema][cargo-json-schema]. Crates may refer to those in other
-registries, but all non-`path`/`git` crates in the dependency graph must exist
-in a registry. As the registry index drives the building of Cargo's dependency
-graph, all non-`path`/`git` crates that end up in the dependency graph must be
-present a registry.
+Cargo can query registries using a Git protocol which caches the registry on
+disk, or using a sparse protocol which exposes the index over HTTP and allows
+Cargo to avoid Cargo having a local copy of the whole index, which has become
+quite large for crates.io.
+
+crates.io's registry index is exposed as both a HTTP API and a Git repository -
+[rust-lang/crates.io-index] - both are updated automatically by crates.io when
+crates are published, yanked, etc. The HTTP API is mostly used.
+
+Each crate in the registry index has a JSON file, following
+[a defined schema][cargo-json-schema] which is jointly maintained by the Cargo
+and crates.io teams. Crates may refer to those in other registries, but all
+non-`path`/`git` crates in the dependency graph must exist in a registry. As the
+registry index drives the building of Cargo's dependency graph, all
+non-`path`/`git` crates that end up in the dependency graph must be present a
+registry.
+
+When a package is published, Cargo posts a JSON blob to the registry which is
+not a index entry but has sufficient information to generate one. crates.io does
+not use Cargo's JSON blob, instead re-generating it from the `Cargo.toml` (this
+avoids the index and `Cargo.toml` from going out-of-sync due to bugs or
+malicious publishes). As a consequence, changes to the index format must be
+duplicated in Cargo and crates.io. Behind the scenes, data from the `Cargo.toml`
+extracted by crates.io is written to a database, which is where the index entry
+and frontend are generated from.
+
+Dependency information of crates in the registry are rendered in the crates.io
+frontend.
 
 Registries can have different policies for what crates are accepted. For
 example, crates.io does not permit publishing packages named `std` or `core` but
