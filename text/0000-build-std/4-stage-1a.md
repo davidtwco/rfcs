@@ -67,13 +67,13 @@ harness then Cargo will also build the `test` crate.
 >
 > - The lockfile included in the standard library source will be used when
 >   resolving the standard library's dependencies ([?][rationale-lockfile]).
-> 
+>
 > - The dependencies of the standard library crates are entirely opaque to the
 >   user. Different semver-compatible versions of these dependencies can
 >   exist in the user's resolve. The user cannot control compilation any of
 >   the dependencies of the `core`, `alloc` or `std` standard library crates
 >   individually (via profile overrides, for example).
-> 
+>
 > - The profile defined by the standard library will be used.
 >
 > Cargo will resolves the dependencies of opaque dependencies, such as the
@@ -160,6 +160,11 @@ and will emit an error ([?][rationale-disallow-custom-targets]).
 > Cargo could detect use of a custom target either by comparing it with the list
 > of built-in targets that rustc reports knowing about (via `--print target-list`)
 > or by checking if a file exists at the path matching the provided target name.
+>
+> This does not require any changes to rustc. If it is invoked to build the
+> standard library then it will continue to do so, as is possible today, it is
+> only the build-std functionality in Cargo that will not support custom targets
+> initially.
 
 Custom targets can still be used with build-std on nightly toolchains provided
 that `-Zunstable-options` is provided to Cargo.
