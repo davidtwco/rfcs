@@ -267,11 +267,11 @@ crates to be built for compilation to succeed.
 > [!NOTE]
 >
 > The `unwind` crate will continue to link to the system's `libunwind` which
-> will need to match the target modifiers used by the standard library to
-> guarantee a successful build. Likewise, if `llvm-libunwind`,
-> `-Clink-self-contained=yes` or `-Ctarget-feature=+crt-static` are used and the
-> distributed `libunwind` is used then it will also need to match the target
-> modifiers of the standard library to guarantee a successful build.
+> will need to match the target modifiers used by the standard library to avoid
+> incompatibilities. Likewise, if `llvm-libunwind`, `-Clink-self-contained=yes`
+> or `-Ctarget-feature=+crt-static` are used and the distributed `libunwind` is
+> used then it will also need to match the target modifiers of the standard
+> library to avoid incompatibilities.
 
 *See the following sections for future possibilities:*
 
