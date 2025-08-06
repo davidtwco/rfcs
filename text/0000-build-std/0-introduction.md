@@ -13,7 +13,7 @@ Writing style:
 - Text is wrapped at ~80 characters, except for headings
 
 - Use the passive voice
- 
+
 - Items in bullet point lists shouldn't end with a period
 
 - Avoid introducing sections that only include other sections and no written
@@ -74,7 +74,7 @@ Git:
 
 - Try to keep each individual change to a single commit and describe that change
   in the commit message
-  
+
   - This makes it easier to review and catch-up
 
 - Keep the first line of commit messages limited to 50 characters and the
@@ -168,9 +168,10 @@ could proceed.
 # Contents
 [contents]: #contents
 
-This RFC has been split into multiple stages. Each stage is a
-self-contained proposal building on the previous, which could be accepted,
-implemented and stabilised on its own.
+This RFC has been split into multiple stages. Each stage is a self-contained
+proposal building on the previous and aim to have value independent of later
+stages. As such, stages should be able to be accepted, implemented and
+stabilised sequentially. of other stages.
 
 As build-std is a complex feature with many interdependent design decisions, it
 is challenging to draft a proposal that is small enough to have an achievable
@@ -180,8 +181,8 @@ this - each stage can have a small and achievable scope, while still allowing a
 reviewer to skip ahead and get a sense of what is planned and how that builds on
 what came before.
 
-Later stages are less detailed and complete than the previous stages, intended
-to indicate the intended direction that the RFC will take and help provide
+Later stages may be less detailed and complete than the previous stages and
+serve to to indicate the direction that build-std will take and help provide
 context for the proposals of earlier stages.
 
 1. [Summary][summary] (you are here)
@@ -190,7 +191,7 @@ context for the proposals of earlier stages.
       the structure of the RFC
 
     - [Proposal-wide rationale and alternatives][rationale-and-alternatives]
-  
+
 2. [Background](./1-background.md)
 
     - Detailed explanations of how relevant and impacted parts of the Rust
@@ -228,7 +229,7 @@ context for the proposals of earlier stages.
 
       - Enables Cargo to determine which standard library crates are required by
         the crate graph without `build-std-crates` being set
-    
+
       - Necessary for future extensions which support public/private standard
         library dependencies or enabling features of the standard library
 
@@ -270,17 +271,17 @@ context for the proposals of earlier stages.
     - [Future possibilities](./7-stage-3.md#future-possibilities)
 
 9.  [Appendix I: Summary of changes](./8-appendix-summary-of-changes.md)
-    
+
     - Summary of each of the changes from each stage which would need implemented
       in the Rust toolchain, grouped by the project team whose purview the change
       would fall under
 
 10. [Appendix II: Exhaustive literature review](./9-appendix-literature-review.md)
-    
+
     - More detailed summaries of the relevant issues, discussions, pull requests
       and proposals that comprise the history of the build-std feature since
       2015
-    
+
     - [*History*](./2-history.md) aims to summarise this content further and
       cover everything that should be necessary to understand the proposal
 
