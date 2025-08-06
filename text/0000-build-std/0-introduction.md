@@ -316,8 +316,8 @@ abstraction after it (rustc).
 
 A brief prototype of this idea was created and a
 [short design document was drafted][why-not-rustup] before concluding that it
-would not be possible. With artifact dependencies, it may be desirable to build
-with a different standard library and if rustup was creating different
+would not be possible. With Cargo's artifact dependencies, it may be desirable
+to build with a different standard library and if rustup was creating different
 toolchains per-customised standard library then Cargo would need to have
 knowledge of these to switch between them, which isn't possible (and something
 of a layering violation). It is also unclear how Cargo would find and use the
