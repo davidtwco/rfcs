@@ -632,16 +632,16 @@ would only add a compilation time overhead.
 ### Why not produce a `dylib` for the standard library?
 [rationale-no-dylib]: #why-not-produce-a-dylib-for-the-standard-library
 
-The `std` crate's `Cargo.toml` is configured with
-`crate-type = ["rlib", "dylib"]` so it can produce both artifacts. The Rust
-project ships both artifacts, with the `dylib` only linked against when
-`-Cprefer-dynamic` is enabled. However, the `dylib` is not part of Rust's
-stability guarantee so a first-class way of specifying crate types is left to a
-future extension.
+The standard library supports being built as both a `rlib` and a `dylib` and
+both are shipped as part of the `rust-std` component. As it does not contain a
+metadata hash, it can be rebuilt unnecessarily when toolchain versions change
+(e.g. switching between stable and nightly and back). The `dylib` is only linked
+against when `-Cprefer-dynamic` is used. build-std will initially be
+conservative and not include the `dylib`.
 
 *See the following sections for future possibilities:*
 
-- [*Allow choosing the crate type of the standard library?*][future-crate-type]
+- [*Build both `dylib` and `rlib` variants of the standard library*][future-crate-type]
 
 ↩ [*Proposal*][proposal]
 
@@ -940,13 +940,10 @@ standard library, then there is no mechanism to do so.
 
 ↩ [*Self-contained objects*][self-contained-objects]
 
-## Allow choosing the crate type of the standard library?
-[future-crate-type]: #allow-choosing-the-crate-type-of-the-standard-library
+## Build both `dylib` and `rlib` variants of the standard library
+[future-crate-type]: #build-both-dylib-and-rlib-variants-of-the-standard-library
 
-The standard library supports being built as both a `rlib` and a `dylib`, but
-only `dylib` is not part of the project's stability guarantee so only an `rlib`
-is built by build-std. This could be relaxed so that a `rlib` and `dylib` are
-produced by build-std.
+build-std could build both the `dylib` and `rlib` of the standard library.
 
 ↩ [*Why not produce a `dylib` for the standard library?*][rationale-no-dylib]
 
