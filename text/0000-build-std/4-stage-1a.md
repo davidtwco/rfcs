@@ -42,20 +42,31 @@ useful for users of tier three targets.
 > artifacts produced by build-std match the pre-built standard library as much
 > as is feasible.
 
-Alongside `build-std`, a `build-std-crate` key will be introduced
-([?][rationale-build-std-crate]), which can be used to specify which crates from
-the standard library is to be built. Only "core", "alloc" and "std" are valid
-values for `build-std-crate`.
+The target's definition includes whether or not the target supports `std`. Every
+crate in the crate graph will depend on `std`, if supported, or otherwise
+`alloc` ([?][rationale-crate-selection]).
 
-```toml
-[build]
-build-std-crate = "std"
-```
+> [!NOTE]
+>
+> The value of std support could be retrieved on stable with a new `--print`
+> option similar to the one previously proposed [here][rfcs#3693]
+> ([?][rationale-previous-print-std-support-concerns]). This will be detailed in
+> a separate proposal.
 
-If [*Stage 1b* of this proposal][stage1b] is implemented then `build-std-crate`
-will not be used unless explicitly set and the crate graph's dependencies on the
-standard library will determine which crates are built instead. Otherwise,
-`build-std-crate` will default to "std".
+> [!NOTE]
+>
+> A cargo configuration key could be introduced to allow manual selection of
+> crates on nightly toolchains only. This would allow users to depend on
+> unstable crates like `test` or attempt to use `std` on a target without
+> official support. It could accept a list of any crate names, upon which crates
+> will directly depend on in Cargo's dependency graph. In order to support
+> multi-target builds which mix `std` and `no_std` platforms this key should
+> also be allowed to be specified in the `[target.<triple>]` sections.
+
+If [*Stage 1b* of this proposal][stage1b] is implemented then Cargo will gain
+the ability to set more granular crate graph dependencies on the standard
+library. Cargo will instead return an error when attempting to depend on `std`
+for a target that does not support it.
 
 If `std` is to be built and Cargo is building a test using the default test
 harness then Cargo will also build the `test` crate.
@@ -78,10 +89,10 @@ harness then Cargo will also build the `test` crate.
 >
 > Cargo will resolves the dependencies of opaque dependencies, such as the
 > standard library, separately in their own workspaces. The root of such a
-> resolve will be the crate specified in `build-std-crates`, or, if stage 1b is
-> implemented, the unified set of packages that any crate in the dependency has
-> a direct dependency on. A dependency on the relevant roots are added to all
-> crates in the "parent" resolve.
+> resolve will be the crate `std` if supported, or otherwise `alloc`. If stage
+> 1b is implemented, the unified set of packages that any crate in the
+> dependency has a direct dependency on. A dependency on the relevant roots are
+> added to all crates in the "parent" resolve.
 >
 > Regardless of which standard library crates are being built, Cargo will build
 > the `sysroot` crate of the standard library workspace. `alloc` and `std` will
@@ -115,7 +126,8 @@ times - once for each target in the project.
 - [*Why does `[target]` take precedence over `[build]` for `build-std`?*][rationale-build-std-precedence]
 - [*Why does "always" rebuild unconditionally?*][rationale-unconditional]
 - [*Why does "always" rebuild in release profile?*][rationale-release-profile]
-- [*Why add `build-std-crate`?*][rationale-build-std-crate]
+- [*Why disallow setting crate dependencies manually?*][rationale-crate-selection]
+- [*How will previous `--print std-support` concerns be addressed?*][rationale-previous-print-std-support-concerns]
 - [*Why use the lockfile of the `rust-src` component?*][rationale-lockfile]
 - [*Why not build the standard library in incremental?*][rationale-incremental]
 - [*Why not produce a `dylib` for the standard library?*][rationale-no-dylib]
@@ -582,16 +594,66 @@ builds.*
 
 ↩ [*Proposal*][proposal]
 
-## Why add `build-std-crate`?
-[rationale-build-std-crate]: #why-add-build-std-crate
+## Why disallow setting crate dependencies manually?
+[rationale-crate-selection]: #why-disallow-setting-crate-dependencies-manually
 
-Not all standard library crates will build on all targets. In a `no_std` project
-for a tier three target, `build-std-crate` gives the user the ability to limit
-which crates are built to those they know they need and will build successfully.
+This stage's proposal will build the maximum set of crates that a user could be
+using. This approach may waste build time when the user does not need every
+crate built, and additionally blocks every user crate from building until the
+standard library build is complete.
 
-*See [Stage 1b][stage1b] for an alternative to `build-std-crate`.*
+[Stage 1b][stage1b] proposes a comprehensive way of declaring standard library
+dependencies which minimise wasted work and maximises build-time parallelism
+between the standard library and user crates. Stabilising an alternative in the
+mean time would eventually result in multiple ways of doing the same thing. This
+leads to unintuitive behaviour for users and increases Cargo's maintenance
+overhead for the long term.
+
+Using the target spec to derive `std` support allows Cargo's behaviour to match
+what the documentation for a target says is supported. Target maintainers who do
+not wish to document (and thereby commit to support) their in-progress `std`
+support do not have to. Users who wish to attempt to build and use `std` for a
+target anyway may do so with an unstable configuration option, thereby opting
+into an unstable feature in Cargo before doing so.
+
+Note that [Custom targets][custom-targets] may set their `std` support however
+they please and Cargo does not try to prevent this.
 
 ↩ [*Proposal*][proposal]
+
+## How will previous `--print std-support` concerns be addressed?
+[rationale-previous-print-std-support-concerns]: #how-will-previous---print-std-support-concerns-be-addressed
+
+A few concerns were raised on this RFC which blocked its FCP:
+
+1. Having a `cfg(std_supported)` option in `std` itself and providing
+diagnostics on failure seems like a better approach.
+
+As detailed in [rationale-crate-selection] this stage would prefer not to
+include a second way for the user to choose crates in addition to the one in
+[stage 1b][stage1b]. Without a way for the user to disable `std`, handling
+`no_std` targets with this method would require Cargo to recover from a failed
+`std` build and adjust for a no_std build. This is very against its current
+architecture as the plan of work is largely immutable once `rustc` calls begin.
+It would also not allow users to override std support which may be desirable in
+some scenarios.ß
+
+Cargo could potentially run a separate "build probe" with this new cfg option
+before resolution to determine whether to build `std`. While this solution would
+be temporary until 1b is implemented it is unlike the other probes Cargo uses
+to collect information, which typically use `--print`. It also introduces the
+potential for bugs as well as slowing down Cargo when build-std is used.
+
+2. Why blur the lines between the compiler and libstd?
+
+It doesn't - `rustc` is already very aware of `std`. Targets, defined by the
+compiler, are already documented as supporting `std` or not. From a practical
+standpoint the library team can own part of the target spec and this shouldn't
+impact the compiler.
+
+3. The toolchain wants to make its own decision on whether to ship `std`
+
+The proposal will be adjusted so `bootstrap` continues to keep its own logic.
 
 ## Why use the lockfile of the `rust-src` component?
 [rationale-lockfile]: #why-use-the-lockfile-of-the-rust-src-component
@@ -955,6 +1017,7 @@ produced by build-std.
 
 [compiler-builtins#411]: https://github.com/rust-lang/compiler-builtins/pull/411
 [compiler-team#343]: https://github.com/rust-lang/compiler-team/issues/343
+[rfcs#3693]: https://github.com/rust-lang/rfcs/pull/3693
 [rust#76158]: https://github.com/rust-lang/rust/pull/76158
 [rust#71009]: https://github.com/rust-lang/rust/pull/71009
 [rust#135395]: https://github.com/rust-lang/rust/pull/135395

@@ -147,6 +147,13 @@ depends on it. There is no mechanism for users to enable the `restricted_std`
 feature on behalf of dependencies. There is also no such mechanism for `alloc`
 or `core`, only `std`.
 
+There are other sources of truth for whether a target supports the standard
+library. Rust's [Platform Support][platform-support] documentation lists targets
+and whether they support `std`. Rust's target definitions includes a
+[`metadata`][target-spec-metadata] field which lists information which is
+intended to be used to generate the target documentation in the future.
+Bootstrap also has separate filtering to decide if `std` is to be built.
+
 Cargo and rustc support custom targets, defined in JSON files according to an
 unstable schema defined in the compiler. On nightly, users can dump the
 target-spec-json for an existing target using `--print target-spec-json`. This
@@ -325,6 +332,7 @@ linked together with different values of the flag set.
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
 [conditional-compilation-config-options]: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 [embed-rs-cargo-toml]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/Cargo.toml#L21
-[target-tier-policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
-[std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
 [platform-support]: https://doc.rust-lang.org/nightly/rustc/platform-support.html
+[std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
+[target-tier-policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
+[target-spec-metadata]: https://github.com/rust-lang/rust/blob/0f353363965ebf05e0757f7679c800b39c51a07e/compiler/rustc_target/src/spec/mod.rs#L2328
