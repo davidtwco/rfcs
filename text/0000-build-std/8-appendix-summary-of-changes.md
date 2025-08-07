@@ -59,7 +59,7 @@ the rest of the toolchain that would need to be upheld:
 The following are all of the unresolved questions from all stages of the RFC:
 
 - [*What should the `build-std` configuration in `.cargo/config` be named?*][unresolved-config-name]
-- [*What should the "always" and "off" values of `build-std` be named?*][unresolved-config-values]
+- [*What should the "always" and "never" values of `build-std` be named?*][unresolved-config-values]
 - [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
 
 ## Future possibilities
@@ -78,7 +78,7 @@ The following are all of the future possibilities from all stages of the RFC:
 [future-recompile-special]: ./4-stage-1a.md#enable-local-recompilation-of-special-object-filessanitizer-runtimes
 [unresolved-build-std-crate-name]: ./4-stage-1a.md#what-should-build-std-crate-be-named
 [unresolved-config-name]: ./4-stage-1a.md#what-should-the-build-std-configuration-in-cargoconfig-be-named
-[unresolved-config-values]: ./4-stage-1a.md#what-should-the-always-and-off-values-of-build-std-be-named
+[unresolved-config-values]: ./4-stage-1a.md#what-should-the-always-and-never-values-of-build-std-be-named
 
 [JOSH]: https://josh-project.github.io/josh/intro.html
 [rust-lang/rust]: https://github.com/rust-lang/rust

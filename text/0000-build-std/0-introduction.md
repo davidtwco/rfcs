@@ -210,7 +210,7 @@ context for the proposals of earlier stages.
 
 5. [Stage 1a: build-std=always](./4-stage-1a.md)
 
-    - Proposes adding a `build-std = "always|off"` option to the Cargo
+    - Proposes adding a `build-std = "always|never"` option to the Cargo
       configuration which will unconditionally re-build the standard library
       crates listed in the `build-std-crates` option
 

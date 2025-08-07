@@ -3,11 +3,11 @@
 
 Cargo configuration will contain a new key `build-std` under the `[build]`
 section ([?][rationale-build-std-in-config]), permitting one of two values -
-"off" ([?][rationale-build-std-off]) or "always", defaulting to "off":
+"never" ([?][rationale-build-std-never]) or "always", defaulting to "never":
 
 ```toml
 [build]
-build-std = "always" # or `off`
+build-std = "always" # or `never`
 ```
 
 `build-std` can also be specified in the `[target.<triple>]` and
@@ -15,7 +15,7 @@ build-std = "always" # or `off`
 
 ```toml
 [target.aarch64-unknown-illumos]
-build-std = "always" # or `off`
+build-std = "always" # or `never`
 ```
 
 The `build-std` configuration locations have the following precedence
@@ -110,7 +110,7 @@ times - once for each target in the project.
 *See the following sections for rationale/alternatives:*
 
 - [*Why put `build-std` in the Cargo config?*][rationale-build-std-in-config]
-- [*Why accept `off` as a value for `build-std`?*][rationale-build-std-off]
+- [*Why accept `never` as a value for `build-std`?*][rationale-build-std-never]
 - [*Why add `build-std` to the `[target.<triple>]` and `[target.<cfg>]` sections?*][rationale-build-std-target-section]
 - [*Why does `[target]` take precedence over `[build]` for `build-std`?*][rationale-build-std-precedence]
 - [*Why does "always" rebuild unconditionally?*][rationale-unconditional]
@@ -124,7 +124,7 @@ times - once for each target in the project.
 *See the following sections for relevant unresolved questions:*
 
 - [*What should the `build-std` configuration in `.cargo/config` be named?*][unresolved-config-name]
-- [*What should the "always" and "off" values of `build-std` be named?*][unresolved-config-values]
+- [*What should the "always" and "never" values of `build-std` be named?*][unresolved-config-values]
 - [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
 
 ## Interactions with `#![no_std]`
@@ -524,16 +524,16 @@ these concerns.
 
 ↩ [*Proposal*][proposal]
 
-## Why accept `off` as a value for `build-std`?
-[rationale-build-std-off]: #why-accept-off-as-a-value-for-build-std
+## Why accept `never` as a value for `build-std`?
+[rationale-build-std-never]: #why-accept-never-as-a-value-for-build-std
 
-While not a default value, the user can specify `off` if they prefer which will
-never rebuild the standard library. rustc will still return an error when the
-user's target-modifiers do not match the pre-built standard library.
+The user can specify `never` (the default value) if they prefer which will never
+rebuild the standard library. rustc will still return an error when the user's
+target-modifiers do not match the pre-built standard library.
 
-The `off` value is useful particularly for qualified toolchains where rebuilding
-the standard library may invalidate the testing that the qualified toolchain has
-undergone.
+The `never` value is useful particularly for qualified toolchains where
+rebuilding the standard library may invalidate the testing that the qualified
+toolchain has undergone.
 
 ↩ [*Proposal*][proposal]
 
@@ -893,8 +893,8 @@ What should this configuration option be named? `build-std`?
 
 ↩ [*Proposal*][proposal]
 
-## What should the "always" and "off" values of `build-std` be named?
-[unresolved-config-values]: #what-should-the-always-and-off-values-of-build-std-be-named
+## What should the "always" and "never" values of `build-std` be named?
+[unresolved-config-values]: #what-should-the-always-and-never-values-of-build-std-be-named
 
 What is the most intuitive name for the values of the `build-std` setting?
 `always`? `manual`? `unconditional`?

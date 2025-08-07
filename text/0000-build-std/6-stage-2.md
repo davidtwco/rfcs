@@ -6,7 +6,7 @@ value:
 
 ```toml
 [build]
-build-std = "compatible" # or `always`/`off`
+build-std = "compatible" # or `always`/`never`
 ```
 
 "compatible" will become the default value for `build-std` ([?][rationale-default]).

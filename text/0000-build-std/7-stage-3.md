@@ -15,7 +15,7 @@ values - "compatible-profile" or "match-profile":
 
 ```toml
 [build]
-build-std = "match-profile" # or `compatible-profile`/`compatible`/`always`/`off`
+build-std = "match-profile" # or `compatible-profile`/`compatible`/`always`/`never`
 ```
 
 "match-profile" will become the default value for the release profile
