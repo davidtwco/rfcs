@@ -938,6 +938,21 @@ prevent some otherwise stable features from being toggled as it controls those.
 
 ↩ [*Features*][features]
 
+## Allow local builds of `compiler-rt` intrinsics
+[future-compiler-builtins-c]: #allow-local-builds-of-compiler-rt-intrinsics
+
+The [`c` feature][background-dependencies] of `compiler_builtins` (which is also
+exposed by `core`, `alloc` and `std` through `compiler-builtins-c`) causes its
+`build.rs` file to build and link in more optimised C versions of intrinsics.
+
+It will not be enabled by default because it is possible that the target
+platform does not have a suitable C compiler available. The user being able to
+enable this manually will be enabled through work on features (see
+[*Allow enabling/disabling features with build-std*][future-features]). Once the
+user can enable `compiler-builtins/c`, they will need to manually configure
+`CFLAGS` to ensure that the C components will link with Rust code.
+
+[background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7

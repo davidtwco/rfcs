@@ -341,6 +341,9 @@ standard library workspace.
 >
 > [rust#135395] could be resurrected to implement this.
 
+See [*Allow local builds of `compiler-rt` intrinsics*][future-compiler-builtins-c]
+for discussion of the `compiler-builtins-c` feature.
+
 ### `compiler-builtins/mem`
 [compiler-builtins-mem]: #compiler-builtinsmem
 
@@ -356,20 +359,6 @@ It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
 *See the following sections for rationale/alternatives:*
 
 - [*Why not use weak linkage for `compiler-builtins/mem` symbols?*][rationale-no-weak-linkage]
-
-### `compiler-builtins/c`
-[compiler-builtins-c]: #compiler-builtinsc
-
-The [`c` feature][background-dependencies] of `compiler_builtins` (which is also
-exposed by `core`, `alloc` and `std` through `compiler-builtins-c`) causes its
-`build.rs` file to build and link in more optimised C versions of intrinsics.
-
-It will not be enabled by default because it is possible that the target
-platform does not have a suitable C compiler available. The user being able to
-enable this manually will be enabled through work on features (see
-[*Allow enabling/disabling features with build-std*][future-features] from Stage
-1b). Once the user can enable `compiler-builtins/c`, they will need to manually
-configure `CFLAGS` to ensure that the C components will link with Rust code.
 
 ## Caching
 [caching]: #caching
@@ -947,8 +936,7 @@ build-std could build both the `dylib` and `rlib` of the standard library.
 
 ↩ [*Why not produce a `dylib` for the standard library?*][rationale-no-dylib]
 
-[background-dependencies]: ./1-background.md#dependencies
-[future-features]: ./5-stage-1b.md#allow-enablingdisabling-features-with-build-std
+[future-compiler-builtins-c]: ./5-stage-1b.md#allow-local-builds-of-compiler-rt-intrinsics
 [stage1b]: ./5-stage-1b.md
 [stage2]: ./6-stage-2.md
 [stage3]: ./7-stage-3.md
