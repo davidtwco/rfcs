@@ -6,7 +6,7 @@ There are many features proposed in this RFC for different parts of the project:
 - Bootstrap/infra/release
   - [Vendoring standard library sources into `rust-src`](./4-stage-1a.md#vendored-rust-src) (Stage 1a)
   - [`rust-src` is a default component](./4-stage-1a.md#vendored-rust-src) (Stage 1a)
-  - [`rust-self-contained` components](./4-stage-1a.md#special-object-files) (Stage 1a)
+  - [`rust-self-contained` components](./4-stage-1a.md##self-contained-objects) (Stage 1a)
   - [Testing build-std in rust-lang/rust CI][constraints-on-the-standard-library]
 - Cargo
   - [`build-std = "always"`](./4-stage-1a.md) (Stage 1a)
@@ -25,7 +25,7 @@ There are many features proposed in this RFC for different parts of the project:
   - [Forcing many codegen-units for `compiler-builtins`](./4-stage-1a.md#compiler-builtins) (Stage 1a)
   - [Checking compatibility of flags and rlibs](./6-stage-2.md#proposal) (Stage 2)
 - Project-wide
-  - [Documenting build-std stability guarantees](./4-stage-1a.md#stability-guarantees) (Stage 1a)
+  - [Documenting build-std stability guarantees](./7-stage-3.md#stability-guarantees) (Stage 1a)
 - Standard library
   - [Removing `restricted_std`](./4-stage-1a.md#restricted_std) (Stage 1a)
   - [Moving configuration into the standard library's profile](./4-stage-1a.md) (Stage 1a)
@@ -72,7 +72,7 @@ The following are all of the future possibilities from all stages of the RFC:
 - [*Enable local recompilation of special object files/sanitizer runtimes*][future-recompile-special]
 - [*Allow choosing the crate type of the standard library?*][future-crate-type]
 
-[future-crate-type]: ./4-stage-1a.md#allow-choosing-the-crate-type-of-the-standard-library
+[future-crate-type]: ./4-stage-1a.md#build-both-dylib-and-rlib-variants-of-the-standard-library
 [future-custom-targets]: ./4-stage-1a.md#allow-custom-targets-with-build-std
 [future-panic_unwind]: ./4-stage-1a.md#avoid-building-panic_unwind-unnecessarily
 [future-recompile-special]: ./4-stage-1a.md#enable-local-recompilation-of-special-object-filessanitizer-runtimes
