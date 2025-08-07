@@ -613,8 +613,10 @@ See
 ### Why not build the standard library in incremental?
 [rationale-incremental]: #why-not-build-the-standard-library-in-incremental
 
-As the standard library sources are never modified, incremental compilation
-would only add a compilation time overhead.
+The standard library sources are not intended to be modified locally, similarly
+to those Cargo fetches from `registry` or `git` sources. Incremental compilation
+would only add a compilation time overhead for any package sources which do not
+change.
 
 ↩ [*Proposal*][proposal]
 
@@ -804,7 +806,8 @@ See
 ### Why not check if `rust-src` has been modified?
 [rationale-src-modifications]: #why-not-check-if-rust-src-has-been-modified
 
-It is likely that any protections implemented to check that the sources in
+This is in line with other immutable dependency sources (like registry or git).
+It is also likely that any protections implemented to check that the sources in
 `rust-src` have not been modified could be trivially bypassed.
 
 Any crate that depends on `rust-src` having been modified would not be usable
