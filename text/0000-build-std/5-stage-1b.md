@@ -20,8 +20,8 @@ dependencies. `builtin` can only be set to `true` and cannot be combined with
 any other dependency source for a given dependency
 ([?][rationale-builtin-other-sources]). `builtin` can only be used with crates
 named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]) on
-stable, but can be with any crate name on nightly
-([?][rationale-nightly-builtin-crates]).
+stable. Use with any crate name is gated on a perma-unstable `cargo-feature`
+([?][rationale-unstable-builtin-crates]).
 
 Crates without an explicit dependency on the standard library now have a
 implicit dependency ([?][rationale-no-migration]) on `std`. In the `hello_world`
@@ -147,7 +147,7 @@ files ([?][rationale-cargo-lock]).
 - [*Why explicitly declare dependencies on the standard library in `Cargo.toml`?*][rationale-why-explicit-deps]
 - [*Why disallow builtin dependencies to be combined with other sources?*][rationale-builtin-other-sources]
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
-- [*Why allow all names for `builtin` crates on nightly?*][rationale-nightly-builtin-crates]
+- [*Why unstably allow all names for `builtin` crates?*][rationale-unstable-builtin-crates]
 - [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
 - [*Why must `std`, `alloc` and `core` always be considered direct dependencies?*][rationale-direct-deps]
 - [*Why disallow renaming standard library dependencies?*][rationale-package-key]
@@ -201,7 +201,7 @@ crates.io.
 ## Patches
 [patches]: #patches
 
-On nightly toolchains, it is permitted to patch the standard library
+Under a perma-unstable fetaure it is permitted to patch the standard library
 dependencies with `path` and `git` sources (or any other source)
 ([?][rationale-patching]):
 
@@ -226,7 +226,7 @@ As with dependencies, crates with `path`/`git` patches for `core`, `alloc` or
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why permit patching of the standard library dependencies on nightly?*][rationale-patching]
+- [*Why unstably permit patching of the standard library dependencies?*][rationale-patching]
 
 *See the following sections for relevant unresolved questions:*
 
@@ -253,7 +253,7 @@ std = { builtin = true, default-features = false } # not permitted
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why limit enabling standard library features to nightly?*][rationale-features]
+- [*Why limit enabling standard library features to an unstable feature?*][rationale-features]
 
 *See the following sections for future possibilities:*
 
@@ -383,7 +383,7 @@ std = { builtin = true } # <-- this would be added
 ```
 
 If attempting to add `core`, `alloc` or `std` with features then this will
-succeed but building the crate will require nightly, as described in
+fail unless the required `cargo-feature` is enabled as described in
 [*Features*][features].
 
 [`cargo info`][cargo-info] will learn how to print information for the built-in
@@ -626,8 +626,8 @@ added manually by users, however:
 
 ↩ [*Proposal*][proposal]
 
-## Why allow all names for `builtin` crates on nightly?
-[rationale-nightly-builtin-crates]: #why-allow-all-names-for-builtin-crates-on-nightly
+## Why unstably allow all names for `builtin` crates?
+[rationale-unstable-builtin-crates]: #why-unstably-allow-all-names-for-builtin-crates
 
 For any crate shipped with the standard library in the sysroot, the user can
 already write an `extern crate` declaration to use it. All crates other than
@@ -640,9 +640,8 @@ For example, some users write benchmarks using `libtest` and have written
 There may be other niche uses of unstable sysroot crates that this enables to
 continue on nightly toolchains.
 
-All names are permitted for `builtin` crates rather than an allowlist to avoid
-Cargo needing to hardcode the names of many of the crates in the sysroot, which
-are inherently unstable.
+An allowlist of `builtin` crate names isn't used here to avoid Cargo needing to
+hardcode the names of many crates in the sysroot which are inherently unstable.
 
 ↩ [*Proposal*][proposal]
 
@@ -727,20 +726,20 @@ resolution to fill in missing `builtin` packages.
 
 ↩ [*Proposal*][proposal]
 
-## Why permit patching of the standard library dependencies on nightly?
-[rationale-patching]: #why-permit-patching-of-the-standard-library-dependencies-on-nightly
+## Why unstably permit patching of the standard library dependencies?
+[rationale-patching]: #why-unstably-permit-patching-of-the-standard-library-dependencies
 
 Being able to patch `builtin = true` dependencies and replace their source with
 a `path` dependency is required to be able to replace `rustc_dep_of_std`. As
 crates which use these sources cannot be published to crates.io, this would not
 enable a usable general-purpose mechanism for crates to modify the standard
-library sources. This capability is restricted to nightly as that is all that is
-required for it to be used in replacing `rustc_dep_of_std`.
+library sources. This capability is restricted to nightly toolchains as that is
+all that is required for it to be used in replacing `rustc_dep_of_std`.
 
 ↩ [*Patches*][patches]
 
-## Why limit enabling standard library features to nightly?
-[rationale-features]: #why-limit-enabling-standard-library-features-to-nightly
+## Why limit enabling standard library features to an unstable feature?
+[rationale-features]: #why-limit-enabling-standard-library-features-to-an-unstable-feature
 
 If it were possible to enable features of the standard library crates on stable
 then all of the standard library's current features would immediately be held to

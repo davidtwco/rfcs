@@ -825,7 +825,7 @@ included.
 [rationale-implied-bootstrap]: #why-allow-building-from-the-sysroot-with-implied-rustc_bootstrap
 
 Cargo needs to be able to build the standard library crates, which inherently
-require a nightly toolchain. It could set `RUSTC_BOOTSTRAP` internally to do
+require unstable features. It could set `RUSTC_BOOTSTRAP` internally to do
 this with a stable toolchain, however this is a shared requirement with other
 build systems that wish to build an unmodified standard library and want to work
 on stable toolchains.
