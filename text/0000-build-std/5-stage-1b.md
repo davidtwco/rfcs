@@ -296,11 +296,12 @@ and cannot otherwise be found in the registry.
 >     of the current package) ([?][rationale-cargo-index-shadowing])
 >
 > - `features`:
->   - An array of strings containing enabled features in order to support changing
->     the standard library features on nightly. Optional, empty by default.
+>   - An array of strings containing enabled features in order to support
+>     changing the standard library features on nightly. Optional, empty by
+>     default.
 >
 > - `optional`, `default_features`, `target`, `kind`:
->   - These keys have the same definition as in the `deps` key.
+>   - These keys have the same definition as in the `deps` key
 >
 > The keys `req`, `registry` and `package` from `deps` are not required per the
 > limitations on builtin dependencies.
