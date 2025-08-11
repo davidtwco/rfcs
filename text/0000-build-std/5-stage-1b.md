@@ -306,8 +306,8 @@ and cannot otherwise be found in the registry.
 > The keys `req`, `registry` and `package` from `deps` are not required per the
 > limitations on builtin dependencies.
 >
-> The key is optional and its default value will be the implicit builtin
-> dependencies:
+> The `builtin_deps` key is optional and if not present its default value will
+> be the implicit builtin dependencies:
 >
 > ```json
 > "builtin_deps" : [
@@ -329,6 +329,10 @@ and cannot otherwise be found in the registry.
 >     }
 > ]
 > ```
+>
+> When producing a registry index entry for a package Cargo will not serialise
+> any `builtin` dependencies it inferred. This allows the set of inferred
+> packages to change in the future if needed.
 
 *See the following sections for rationale/alternatives:*
 
