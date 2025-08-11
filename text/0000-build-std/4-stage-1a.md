@@ -544,13 +544,13 @@ for it to override a global default in `[build]`.
 
 ↩ [*Proposal*][proposal]
 
-## Why does "always" rebuild unconditionally?
-[rationale-unconditional]: #why-does-always-rebuild-unconditionally
+## Why have a manual "always" option instead of a "when-needed" mode?
+[rationale-unconditional]: #why-have-a-manual-always-option-instead-of-a-when-needed-mode
 
-Rebuilding unconditionally avoids the complexity associated with an automatic
-build-std mechanism while still being useful for users of tier three targets. By
-leaving an automatic mechanism for a later stage, fewer of the technical
-challenges of build-std need to be addressed all at once.
+Always using a locally-built standard library avoids the complexity associated
+with an automatic build-std mechanism while still being useful for users of tier
+three targets. By leaving an automatic mechanism for a later stage, fewer of the
+technical challenges of build-std need to be addressed all at once.
 
 Having an opt-in mechanism initially, such as `build-std = "always"`, allows for
 early issues with build-std to be ironed out without potentially affecting more
