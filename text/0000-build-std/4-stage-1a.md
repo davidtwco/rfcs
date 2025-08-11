@@ -859,9 +859,9 @@ has precedence over shared libraries and the symbols of a dynamically-linked
 
 The standard library is no different than regular dependencies in being able to
 benefit from global caching of dependency builds. A generic proposal for global
-dependency caching could support the standard library. It is out-of-scope of
-this proposal to propose a special-cased mechanism for this that applies only to
-the standard library.
+dependency caching is being worked on as part of [cargo#5931] and could support
+the standard library. It is out-of-scope of this proposal to propose a
+special-cased mechanism for this that applies only to the standard library.
 
 ↩ [*Caching*][caching]
 
@@ -950,6 +950,7 @@ build-std could build both the `dylib` and `rlib` of the standard library.
 
 [Opaque dependencies]: https://hackmd.io/@epage/ByGfPtRell
 
+[cargo#5931]: https://github.com/rust-lang/cargo/issues/5931
 [compiler-builtins#411]: https://github.com/rust-lang/compiler-builtins/pull/411
 [compiler-team#343]: https://github.com/rust-lang/compiler-team/issues/343
 [rust#76158]: https://github.com/rust-lang/rust/pull/76158
