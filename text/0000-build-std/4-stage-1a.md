@@ -639,13 +639,17 @@ conservative and not include the `dylib`.
 ## Why use the pre-built standard library for procedural macros and build-scripts?
 [rationale-sysroot-for-host-deps]: #why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts
 
-Procedural macros and build scripts always run on the host and need to be built
-with a configuration that are compatible with the host toolchain's Cargo and
-rustc. There is little advantage to using a custom standard library with
-procedural macros or build scripts, as they are not part of the final output
-artifact and anywhere they can run already have a toolchain with host tools and
-a pre-built standard library. Procedural macros must link against the compiler
-which further limits potential use cases to those without `target-modifiers`.
+Procedural macros always run on the host and need to be built with a
+configuration that are compatible with the host toolchain's rustc as they need
+to be linked against it. Similarly, build scripts do not inherit `RUSTFLAGS`
+from the environment so the standard library they link against must be built
+with a configuration compatible with the target's default.
+
+There is little advantage to using a custom standard library with procedural
+macros or build scripts as they are not part of the final output artifact and
+anywhere they can run already have a toolchain with host tools and a pre-built
+standard library. The fact that any configuration cannot change
+`target-modifiers` further limits any potential uses.
 
 ↩ [*Proposal*][proposal]
 
