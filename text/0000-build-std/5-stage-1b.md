@@ -24,8 +24,8 @@ stable. Use with any crate name is gated on a perma-unstable `cargo-feature`
 ([?][rationale-unstable-builtin-crates]).
 
 Crates without an explicit dependency on the standard library now have a
-implicit dependency ([?][rationale-no-migration]) on `std`. In the `hello_world`
-crate below, there are no explicit `builtin` dependencies..
+implicit dependency ([?][rationale-no-migration]) on `std`, `alloc` and `core`.
+In the `hello_world` crate below, there are no explicit `builtin` dependencies..
 
 ```toml
 [package]
@@ -36,34 +36,7 @@ edition = "2024"
 [dependencies]
 ```
 
-..which is equivalent to the following explicit dependency:
-
-```toml
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-std = { builtin = true }
-```
-
-A dependency on `std` implies a direct dependency on `alloc` and `core`, and
-likewise a dependency on `alloc` implies a direct dependency on `core`
-([?][rationale-direct-deps]). Therefore, the following explicit dependency on
-`std`:
-
-```toml
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-std = { builtin = true }
-```
-
-..is equivalent to:
+..which is equivalent to the following explicit dependencies:
 
 ```toml
 [package]
@@ -78,7 +51,7 @@ core = { builtin = true }
 ```
 
 Any explicit `builtin` dependency present in the manifest will disable the
-implicit dependency on `std`.
+implicit dependencies.
 
 When a `std` dependency is present an additional implicit dependency on the
 `test` crate is added for crates that are being tested with the default test
@@ -149,7 +122,6 @@ files ([?][rationale-cargo-lock]).
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
 - [*Why unstably allow all names for `builtin` crates?*][rationale-unstable-builtin-crates]
 - [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
-- [*Why must `std`, `alloc` and `core` always be considered direct dependencies?*][rationale-direct-deps]
 - [*Why disallow renaming standard library dependencies?*][rationale-package-key]
 - [*Why disallow source replacement on `builtin` packages?*][rationale-source-replacement]
 - [*Why add standard library dependencies to Cargo.lock?*][rationale-cargo-lock]
@@ -671,23 +643,6 @@ Cargo, so this approach has its own complications. For example, while
 to find the standard library crates on crates.io and fail unless empty crates
 were published named `core`, `alloc` and `std`. This is not a build-std specific
 issue and is true of any RFC adding to what can be written in `Cargo.toml`.
-
-↩ [*Proposal*][proposal]
-
-## Why must `std`, `alloc` and `core` always be considered direct dependencies?
-[rationale-direct-deps]: #why-must-std-alloc-and-core-always-be-considered-direct-dependencies
-
-When a crate depends on `std`, the user can also write `extern crate alloc` or
-`extern crate core` - this is equivalent to having a direct dependency on these
-crates which is not added to the extern prelude.
-
-If `alloc` and `core` were considered indirect dependencies in this
-circumstance, then they would be located in a `-L dependency=` directory, which
-rustc would not search when loading a crate from `extern crate`.
-
-> [!NOTE]
->
-> `alloc` and `core` must always be passed with `--extern`.
 
 ↩ [*Proposal*][proposal]
 
