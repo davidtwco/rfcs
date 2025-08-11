@@ -296,11 +296,12 @@ std = { builtin = true, public = true }
 ## `dev-dependencies` and `build-dependencies`
 [dev-dependencies-and-build-dependencies]: #dev-dependencies-and-build-dependencies
 
-Explicit dependencies on the standard library are not supported in
-`build-dependencies` ([?][rationale-no-deps-in-build-deps]).
-
 Implicit and explicit dependencies on the standard library are supported for
 `dev-dependencies` in the same way as regular `dependencies`.
+
+Build scripts and proc macros continue to use the prebuilt standard library as
+in stage 1a, and so explicit dependencies on the standard library are not
+supported in `build-dependencies`.
 
 ## Registries
 [registries]: #registries
@@ -770,17 +771,6 @@ dependency was (i.e. the standard library has a different default than
 everything else).
 
 ↩ [*Public and private dependencies*][public-and-private-dependencies]
-
-## Why not support explicit standard library dependencies in `build-dependencies`?
-[rationale-no-deps-in-build-deps]: #why-not-support-explicit-standard-library-dependencies-in-build-dependencies
-
-`build-dependencies` only apply to build scripts which are run on the host
-toolchain. There is little advantage to using a custom standard library with
-build scripts as they are not part of the final output artifact and anywhere
-they can run already has a toolchain with host tools and a pre-built standard
-library.
-
-↩ [*`dev-dependencies` and `build-dependencies`*][dev-dependencies-and-build-dependencies]
 
 ## Why add standard library crates to Cargo's index?
 [rationale-cargo-index]: #why-add-standard-library-crates-to-cargos-index
