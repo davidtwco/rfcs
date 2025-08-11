@@ -621,28 +621,32 @@ hardcode the names of many crates in the sysroot which are inherently unstable.
 ## Why not migrate to always requiring explicit standard library dependencies?
 [rationale-no-migration]: #why-not-migrate-to-always-requiring-explicit-standard-library-dependencies
 
+Requiring explicit `builtin` dependencies would, for one, increase the
+boilerplate required for users of Cargo and make the minimal `Cargo.toml` file
+larger.
+
 Explicit standard library dependencies with `builtin = true` will necessarily
-only be understood by newer versions of Cargo.
+only be understood by newer versions of Cargo. If there were no implicit
+dependencies then adding `builtin` dependencies to a crate would mean that Cargo
+has to make a decision on builtins for every crate in the dependency graph. This
+either means that every crate in a project would also require explicit `builtin`
+dependencies in order for Cargo to resolve them, putting a lot of pressure on
+every Rust crate to raise their MSRV.
 
-If all packages were required to add explicit dependencies (perhaps over an
-edition or through some other mechanism), then every crate would require the
-newest version of Cargo to be understood, effectively raising the MSRV of every
-Rust crate.
-
-If only `no_std` crates (or crates with a `std` feature) add explicit
-dependencies on `core` or `alloc` then a much smaller percentage of the crates
-ecosystem will require the newest Cargo versions for their new explicit standard
-library dependencies to be understood.
+This proposal puts less pressure on the ecosystem to upgrade - `no_std` crates
+(or crates with a `std` feature) will benefit from adding explicit dependencies
+to allow them to be easily used on `no_std` targets but users can still work
+around any legacy crates in the graph with [`build-std-crates`][stage1a].
 
 Alternative syntaxes, such as requiring `version = "*"` for explicit standard
-library dependencies, could be worthwhile to maintain a greater level of
-compatibility with older toolchain versions. Any currently accepted syntax would
-necessarily be interpreted differently by the build-std-supporting versions of
-Cargo, so this approach has its own complications. For example, while
-`version = "*"` would be understood by older versions of Cargo, it would attempt
-to find the standard library crates on crates.io and fail unless empty crates
-were published named `core`, `alloc` and `std`. This is not a build-std specific
-issue and is true of any RFC adding to what can be written in `Cargo.toml`.
+library dependencies, were considered to maintain a greater level of
+compatibility with older toolchain versions. However, any older version of Cargo
+would try to look for a specified dependency somewhere - if this lookup failed
+then the resolve would fail, and if it succeeded (by perhaps finding an empty
+`std` crate on crates.io) then these would override the prebuilt std when passed
+to rustc via `--extern`. It is not possible to direct any older version of Cargo
+to ignore a dependency. This is not a build-std specific issue and is true of
+any RFC adding to what can be written in `Cargo.toml`.
 
 ↩ [*Proposal*][proposal]
 
@@ -895,6 +899,8 @@ enable this manually will be enabled through work on features (see
 [*Allow enabling/disabling features with build-std*][future-features]). Once the
 user can enable `compiler-builtins/c`, they will need to manually configure
 `CFLAGS` to ensure that the C components will link with Rust code.
+
+[stage1a]: ./4-stage-1a.md
 
 [background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
