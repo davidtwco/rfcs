@@ -344,8 +344,8 @@ will only additionally recognise `core`, `alloc` and `std` and none of their
 dependencies. Many of Cargo's subcommands will need modification to support
 build-std:
 
-[`cargo add`][cargo-add] will add `core`, `alloc` or `std` explicitly to the
-manifest if invoked with those crate names:
+[`cargo add`][cargo-add] will gain a `--builtin` flag to allow for adding crates
+with a `builtin` source:
 
 ```toml
 [package]
@@ -357,9 +357,12 @@ edition = "2024"
 std = { builtin = true } # <-- this would be added
 ```
 
-If attempting to add `core`, `alloc` or `std` with features then this will
-fail unless the required `cargo-feature` is enabled as described in
-[*Features*][features].
+If attempting to add a crate name outside of `core`, `alloc` or `std` this will
+fail unless the required `cargo-feature` is added to allow other `builtin` crate
+names as described in [the rationale][rationale-unstable-builtin-crates].
+
+If attempting to add a `builtin` crate with features then this will fail unless
+the required `cargo-feature` is enabled as described in [*Features*][features].
 
 [`cargo info`][cargo-info] will learn how to print information for the built-in
 `std`, `alloc` and `core` dependencies:
