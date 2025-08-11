@@ -32,7 +32,8 @@ the dependencies of the current crate.
 When `build-std` is set to "always", then the standard library will be
 unconditionally recompiled ([?][rationale-unconditional]) in its release profile
 as part of every clean build ([?][rationale-release-profile]). This is primarily
-useful for users of tier three targets.
+useful for users of tier three targets. Like with other dependencies the build
+will inherit variables like `RUSTFLAGS` from the environment.
 
 > [!NOTE]
 >
