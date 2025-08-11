@@ -30,10 +30,11 @@ As the Cargo configuration is local to the current installation of Cargo
 the dependencies of the current crate.
 
 When `build-std` is set to "always", then the standard library will be
-unconditionally recompiled ([?][rationale-unconditional]) in its release profile
-as part of every clean build ([?][rationale-release-profile]). This is primarily
-useful for users of tier three targets. Like with other dependencies the build
-will inherit variables like `RUSTFLAGS` from the environment.
+unconditionally recompiled ([?][rationale-unconditional]) in the release profile
+defined in its workspace as part of every clean build
+([?][rationale-release-profile]). This is primarily useful for users of tier
+three targets. Like with other dependencies the build will inherit variables
+like `RUSTFLAGS` from the environment.
 
 > [!NOTE]
 >
