@@ -78,10 +78,10 @@ default = ["std"]
 std = ["dep:std"]
 ```
 
-If there is an optional dependency on the standard library then there must be at
-least one non-optional dependency on the standard library (e.g. an optional
-`std` and non-optional `core` or `alloc`, or an optional `alloc` and
-non-optional `core`). `core` cannot be optional.
+If there is an optional dependency on the standard library then Cargo will
+validate that there is at least one non-optional dependency on the standard
+library (e.g. an optional `std` and non-optional `core` or `alloc`, or an
+optional `alloc` and non-optional `core`). `core` cannot be optional.
 
 Dependencies with `builtin = true` cannot be renamed with the `package` key
 ([?][rationale-package-key]). It is not possible to perform source replacement
