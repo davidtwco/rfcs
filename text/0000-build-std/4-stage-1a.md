@@ -644,14 +644,21 @@ conservative and not include the `dylib`.
 Procedural macros always run on the host and need to be built with a
 configuration that are compatible with the host toolchain's rustc as they need
 to be linked against it. Similarly, build scripts do not inherit `RUSTFLAGS`
-from the environment so the standard library they link against must be built
-with a configuration compatible with the target's default.
+from the environment (a deliberate deicsion made for `1.55`), so neither can the
+standard library they link against. This means neither can use the standard
+library that the user may have customised with target modifiers.
+
+This does introduce a perhaps surprising inconsistency for users where when
+building without `--target` different hostmode dependencies use different
+versions of the standard library. This is unavoidable while allowing users to
+customise the standard library with target modifiers.
 
 There is little advantage to using a custom standard library with procedural
 macros or build scripts as they are not part of the final output artifact and
 anywhere they can run already have a toolchain with host tools and a pre-built
 standard library. The fact that any configuration cannot change
-`target-modifiers` further limits any potential uses.
+`target-modifiers` further limits any potential uses. If desired this feature
+can be added in the future by extending the features proposed in this RFC.
 
 ↩ [*Proposal*][proposal]
 
