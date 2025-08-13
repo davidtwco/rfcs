@@ -34,7 +34,7 @@ unconditionally recompiled ([?][rationale-unconditional]) in the release profile
 defined in its workspace as part of every clean build
 ([?][rationale-release-profile]). This is primarily useful for users of tier
 three targets. Like with other dependencies the build will inherit variables
-like `RUSTFLAGS` from the environment.
+like `RUSTFLAGS` from the environment (see [unresolved-inherit-rustflags]).
 
 > [!NOTE]
 >
@@ -128,6 +128,7 @@ times - once for each target in the project.
 - [*What should the `build-std` configuration in `.cargo/config` be named?*][unresolved-config-name]
 - [*What should the "always" and "never" values of `build-std` be named?*][unresolved-config-values]
 - [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
+- [*Should the standard library inherit RUSTFLAGS?*][unresolved-inherit-rustflags]
 
 ## Interactions with `#![no_std]`
 [interactions-with-no_std]: #interactions-with-no_std
@@ -910,6 +911,14 @@ What is the most intuitive name for the values of the `build-std` setting?
 [unresolved-build-std-crate-name]: #what-should-build-std-crate-be-named
 
 What should this configuration option be named?
+
+↩ [*Proposal*][proposal]
+
+## Should the standard library inherit RUSTFLAGS?
+[unresolved-inherit-rustflags]: #should-the-standard-library-inherit-rustflags
+
+The original opaque dependencies model gave them their own `RUSTFLAGS`. This RFC
+currently diverges from that - can the two be unified in some way?
 
 ↩ [*Proposal*][proposal]
 
