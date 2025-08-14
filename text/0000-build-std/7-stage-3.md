@@ -30,7 +30,7 @@ automatically when a pre-built standard library is not present.
   different profile than the default "release" profile of the pre-built standard
   library or a rebuild is necessary to maintain compatibility with the user's
   crate ([?][rationale-compatible-profile]).
-  
+
   Cargo will build the standard library using the same profile as the user, as
   defined in the standard library workspace
   ([?][rationale-compatible-profile-std]). It will vary only in the target modifiers
@@ -87,6 +87,7 @@ the standard library if [*Stage 1b*][stage1b] was implemented.
 *See the following sections for relevant unresolved questions:*
 
 - [*What should the "match-profile" and "compatible-profile" values of `build-std` be named?*][unresolved-naming]
+- [*Should `build-std` be in `[profile]` if it only makes in the Cargo configuration `[profile]`?*][unresolved-profile]
 
 ## Stability guarantees
 [stability-guarantees]: #stability-guarantees
@@ -136,6 +137,10 @@ binary. It is more likely that users would want to use "match-profile" with the
 release profile than by default (as in `[build]`) or for a specific target (as
 in `[target]`).
 
+However, permitting `build-std` in `[profile]` when in Cargo configurations, but
+not in Cargo manifests, is inconsistent with other options that exist in
+profiles.
+
 ↩ [*Proposal*][proposal]
 
 ## Why does `[profile]` have higher precedence than `[build]` and lower than `[target]`?
@@ -176,7 +181,7 @@ builds would immediately trigger a rebuild of the standard library.
 ↩ [*Proposal*][proposal]
 
 ### Why add "compatible-profile"?
-[rationale-compatible-profile]: #why-add-compatible-profile 
+[rationale-compatible-profile]: #why-add-compatible-profile
 
 "compatible-profile" is useful for when users want a more debuggable standard
 library while keeping rebuilds of the standard library to a minimum.
@@ -184,7 +189,7 @@ library while keeping rebuilds of the standard library to a minimum.
 ↩ [*Proposal*][proposal]
 
 ### Why does "compatible-profile" use the standard library's profiles?
-[rationale-compatible-profile-std]: #why-does-compatible-profile-use-the-standard-librarys-profiles 
+[rationale-compatible-profile-std]: #why-does-compatible-profile-use-the-standard-librarys-profiles
 
 By using the standard library's profile definitions, the library team will be
 able to define a "dev" profile that is most useful for the standard library.
@@ -192,7 +197,7 @@ able to define a "dev" profile that is most useful for the standard library.
 ↩ [*Proposal*][proposal]
 
 ### Why add "match-profile"?
-[rationale-match-profile]: #why-add-match-profile 
+[rationale-match-profile]: #why-add-match-profile
 
 "match-profile" is useful for rebuilding the standard library with the same
 codegen flags as the rest of the user's project, such as using `-Ctarget-cpu` to
@@ -210,6 +215,11 @@ stabilisation and aren't pertinent to the overall design:
 [unresolved-naming]: #what-should-the-match-profile-and-compatible-profile-values-of-build-std-be-named
 
 It could be named something else.
+
+## Should `build-std` be in `[profile]` if it only makes in the Cargo configuration `[profile]`?
+[unresolved-profile]: #should-build-std-be-in-profile-if-it-only-makes-in-the-cargo-configuration-profile
+
+This could be unintuitive for users.
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
