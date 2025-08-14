@@ -660,7 +660,7 @@ differently when serialising the registry index schema by adding them to a
 separate field for dependencies, which older versions of Cargo would not be
 aware of. Requiring a new Cargo version to understand the manifest is common
 for new Cargo features, but we do maintain compatibility for index entries as
-described in [registries].
+described in [*Registries*][registries].
 
 ↩ [*Proposal*][proposal]
 
