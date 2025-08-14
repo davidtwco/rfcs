@@ -864,8 +864,8 @@ would be desirable.
 
 There are many possible follow-ups to Stage 1b:
 
-## Warn when `no_std` crates accidentally have a dependency on `std`
-[future-no_std-warning]: #warn-when-no_std-crates-accidentally-have-a-dependency-on-std
+## Warn when `no_std` crates accidentally have a transitive dependency on `std`
+[future-no_std-warning]: #warn-when-no_std-crates-accidentally-have-a-transitive-dependency-on-std
 
 Cargo could emit a warning or lint when a root crate without an explicit
 dependency on `std` or `alloc` has a dependency on `std` or `alloc` via a
