@@ -269,8 +269,11 @@ std = { builtin = true, public = true }
 [dev-dependencies-and-build-dependencies]: #dev-dependencies-and-build-dependencies
 
 Implicit and explicit dependencies on the standard library are supported for
-`dev-dependencies` in the same way as regular `dependencies`. Any `builtin`
-dependencies specified are also available as `dev-dependencies` as usual.
+`dev-dependencies` in the same way as regular `dependencies`. `dev-dependencies`
+continues to be a superset of `dependencies`, including with `builtin`
+dependencies. It is possible for `dev-dependencies` to have additional `builtin`
+dependencies that the `dependencies` section does not have (e.g. requiring `std`
+when the regular dependencies only require `core`).
 
 Build scripts and proc macros continue to use the prebuilt standard library as
 in Stage 1a, and so explicit dependencies on the standard library are not
