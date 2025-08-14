@@ -121,7 +121,7 @@ files ([?][rationale-cargo-lock]).
 - [*Why disallow builtin dependencies to be combined with other sources?*][rationale-builtin-other-sources]
 - [*Why disallow builtin dependencies on other crates?*][rationale-no-builtin-other-crates]
 - [*Why unstably allow all names for `builtin` crates?*][rationale-unstable-builtin-crates]
-- [*Why not migrate to always requiring explicit standard library dependencies?*][rationale-no-migration]
+- [*Why not require builtin dependencies instead of supporting implicit ones?*][rationale-no-migration]
 - [*Why disallow renaming standard library dependencies?*][rationale-package-key]
 - [*Why disallow source replacement on `builtin` packages?*][rationale-source-replacement]
 - [*Why add standard library dependencies to Cargo.lock?*][rationale-cargo-lock]
@@ -627,25 +627,25 @@ hardcode the names of many crates in the sysroot which are inherently unstable.
 
 ↩ [*Proposal*][proposal]
 
-## Why not migrate to always requiring explicit standard library dependencies?
-[rationale-no-migration]: #why-not-migrate-to-always-requiring-explicit-standard-library-dependencies
+## Why not require builtin dependencies instead of supporting implicit ones?
+[rationale-no-migration]: #why-not-require-builtin-dependencies-instead-of-supporting-implicit-ones
 
-Requiring explicit `builtin` dependencies would, for one, increase the
-boilerplate required for users of Cargo and make the minimal `Cargo.toml` file
-larger.
+Requiring explicit `builtin` dependencies (which would have to happen on a new
+edition) would, for one, increase the boilerplate required for users of Cargo
+and make the minimal `Cargo.toml` file larger.
 
-Explicit standard library dependencies with `builtin = true` will necessarily
-only be understood by newer versions of Cargo. If there were no implicit
-dependencies then adding `builtin` dependencies to a crate would mean that Cargo
-has to make a decision on builtins for every crate in the dependency graph. This
-either means that every crate in a project would also require explicit `builtin`
-dependencies in order for Cargo to resolve them, putting a lot of pressure on
-every Rust crate to raise their MSRV.
+Cargo must always continue to support old manifests, meaning it must support
+crates without builtin dependencies and crates with builtin dependencies. It
+must also support crate graphs with a mixture of these types of manifest in
+order for crates to migrate before their dependencies do. Implicit dependencies
+are required to allow Cargo to resolve `builtin` dependencies and pass them
+correctly to crates which support them while the ecosystem migrates.
 
 This proposal puts less pressure on the ecosystem to upgrade - `no_std` crates
-(or crates with a `std` feature) will benefit from adding explicit dependencies
-to allow them to be easily used on `no_std` targets but users can still work
-around any legacy crates in the graph with [`build-std-crates`][stage1a].
+(or crates with a `std` feature) will still benefit from adding explicit
+dependencies to allow them to be easily used on `no_std` targets but users can
+still work around any legacy crates in the graph with
+[`build-std-crates`][stage1a].
 
 Alternative syntaxes, such as requiring `version = "*"` for explicit standard
 library dependencies, were considered to maintain a greater level of
