@@ -355,8 +355,10 @@ will only additionally recognise `core`, `alloc` and `std` and none of their
 dependencies. Many of Cargo's subcommands will need modification to support
 build-std:
 
-[`cargo add`][cargo-add] will gain a `--builtin` flag to allow for adding crates
-with a `builtin` source:
+[`cargo add`][cargo-add]'s heuristics will include adding `std`, `alloc` or
+`core` as builtin dependencies if these crate names are provided. `cargo add`
+will additionally have a `--builtin` flag to allow for adding crates with a
+`builtin` source explicitly:
 
 ```toml
 [package]
@@ -444,7 +446,8 @@ any other dependency.
 the source, likewise with `alloc` and `std`.
 
 [`cargo remove`][cargo-remove] will remove `core`, `alloc` or `std` explicitly
-from the manifest if invoked with those crate names:
+from the manifest if invoked with those crate names (using the same heuristics
+as those described above for `cargo add`):
 
 ```toml
 [package]
