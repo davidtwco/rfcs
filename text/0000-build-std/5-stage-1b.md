@@ -173,7 +173,7 @@ crates.io.
 ## Patches
 [patches]: #patches
 
-Under a perma-unstable fetaure it is permitted to patch the standard library
+Under a perma-unstable feature it is permitted to patch the standard library
 dependencies with `path` and `git` sources (or any other source)
 ([?][rationale-patching]):
 
