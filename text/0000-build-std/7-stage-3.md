@@ -147,7 +147,9 @@ profiles.
 [rationale-profile-precedence]: #why-does-profile-have-higher-precedence-than-build-and-lower-than-target
 
 `[target]` configuration is more narrowly scoped than `[profile]` which is in
-turn more narrowly scoped than the global default in `[build]`.
+turn more narrowly scoped than the global default in `[build]`. There is no
+existing precedent in Cargo for these sections having the precedence currently
+proposed.
 
 ↩ [*Proposal*][proposal]
 
