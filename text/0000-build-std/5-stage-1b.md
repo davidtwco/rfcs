@@ -773,8 +773,10 @@ packages which are defined using a schema it does not have knowledge of.
 
 Cargo ignores packages published under an unsupported schema version, so older
 versions of Cargo cannot use newer versions of packages relying on these
-features. New schema versions are disruptive to users on older toolchains and
-should be avoided where possible.
+features (though this would be true because of an incompatible Cargo manifest
+anyway). New schema versions are disruptive to users on older toolchains, as the
+resolver will act as if a package does not exist. Recent Cargo versions have
+improved error reporting for this circumstance.
 
 Some new fields, including `rust-version`, were added to all versions of the
 schema. Cargo ignores fields it does not have knowledge of, so older versions of
