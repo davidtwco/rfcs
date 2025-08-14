@@ -104,10 +104,11 @@ harness then Cargo will also build the `test` crate.
 > `target` directory of the crate or workspace like any other dependency.
 
 The host pre-built standard library will always be used for procedural macros
-and build scripts ([?][rationale-sysroot-for-host-deps]). Multi-target projects
-(resulting from the `target` field in artifact dependencies or the use of
-`per-pkg-target` fields) may result in the standard library being built multiple
-times - once for each target in the project.
+and build scripts ([?][rationale-host-deps-cross],
+[?][rationale-host-deps-host]). Multi-target projects (resulting from the
+`target` field in artifact dependencies or the use of `per-pkg-target` fields)
+may result in the standard library being built multiple times - once for each
+target in the project.
 
 *See the following sections for rationale/alternatives:*
 
@@ -121,7 +122,8 @@ times - once for each target in the project.
 - [*Why use the lockfile of the `rust-src` component?*][rationale-lockfile]
 - [*Why not build the standard library in incremental?*][rationale-incremental]
 - [*Why not produce a `dylib` for the standard library?*][rationale-no-dylib]
-- [*Why use the pre-built standard library for procedural macros and build-scripts?*][rationale-sysroot-for-host-deps]
+- [*Why use the pre-built standard library for procedural macros and build scripts in host mode?*][rationale-host-deps-host]
+- [*Why use the pre-built standard library for procedural macros and build scripts in cross-compile mode?*][rationale-host-deps-cross]
 
 *See the following sections for relevant unresolved questions:*
 
@@ -639,27 +641,38 @@ conservative and not include the `dylib`.
 
 ↩ [*Proposal*][proposal]
 
-## Why use the pre-built standard library for procedural macros and build-scripts?
-[rationale-sysroot-for-host-deps]: #why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts
+## Why use the pre-built standard library for procedural macros and build scripts in cross-compile mode?
+[rationale-host-deps-cross]: #why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts-in-cross-compile-mode
 
 Procedural macros always run on the host and need to be built with a
-configuration that are compatible with the host toolchain's rustc as they need
-to be linked against it. Similarly, build scripts do not inherit `RUSTFLAGS`
-from the environment (a deliberate deicsion made for `1.55`), so neither can the
-standard library they link against. This means neither can use the standard
-library that the user may have customised with target modifiers.
-
-This does introduce a perhaps surprising inconsistency for users where when
-building without `--target` different hostmode dependencies use different
-versions of the standard library. This is unavoidable while allowing users to
-customise the standard library with target modifiers.
-
-There is little advantage to using a custom standard library with procedural
-macros or build scripts as they are not part of the final output artifact and
+configuration that are compatible with the host toolchain's Cargo and rustc,
+limiting the potential customisations of the standard library that would be
+valid. There is little advantage to using a custom standard library with
+procedural macros, as they are not part of the final output artifact and
 anywhere they can run already have a toolchain with host tools and a pre-built
-standard library. The fact that any configuration cannot change
-`target-modifiers` further limits any potential uses. If desired this feature
-can be added in the future by extending the features proposed in this RFC.
+standard library.
+
+Build scripts similarly always run on the host and thus would require building
+the standard library again for the host. There is little advantage to doing this
+as build scripts are not part of the final output artifact. Build scripts do not
+respect `RUSTFLAGS` which could result in target modifier mismatches if
+rebuilding the standard library does respect `RUSTFLAGS`.
+
+↩ [*Proposal*][proposal]
+
+## Why use the pre-built standard library for procedural macros and build scripts in host mode?
+[rationale-host-deps-host]: #why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts-in-host-mode
+
+Unlike when in cross-compile mode, if Cargo is in host mode (i.e. `--target` is
+not provided), the standard library built by build-std could hypothetically be
+used for procedural macros and build scripts without additional recompilations
+of the standard library.
+
+However, as with [cross-compile mode][rationale-host-deps-cross], there is
+little advantage to using a customised standard library for procedural macros or
+build scripts, and both would require limitations on the customisations possible
+with build-std in order to guarantee compatibility with the compiler or build
+script, respectively.
 
 ↩ [*Proposal*][proposal]
 

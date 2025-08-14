@@ -100,7 +100,7 @@ Implicit and explicit standard library dependencies are added to `Cargo.lock`
 files ([?][rationale-cargo-lock]).
 
 > [!NOTE]
-> 
+>
 > A new version of the `Cargo.lock` file will be introduced to add support for
 > packages with a `builtin` source:
 >
@@ -110,7 +110,7 @@ files ([?][rationale-cargo-lock]).
 > version = "0.0.0"
 > source = "builtin"
 > ```
-> 
+>
 > The package version of `std`, `alloc` and `core` will be fixed at `0.0.0`. The
 > optional lockfile fields `dependencies` and `checksum` will not be present for
 > `builtin` dependencies.
@@ -829,7 +829,7 @@ appropriate? Could the `source` field be reused with the string "builtin" or
 should it stay only as a URL+scheme?
 
 ↩ [*Proposal*][proposal]
-  
+
 ## What syntax is used to patch dependencies on the standard library in `Cargo.toml`?
 [unresolved-patch-syntax]: #what-syntax-is-used-to-patch-dependencies-on-the-standard-library-in-cargotoml
 
@@ -847,7 +847,7 @@ Allowing `builtin` dependencies to be regular and `dev` dependencies but not
 Cargo supports changing the profiles of these dependencies in a
 `[profile.dev.build-override]` section, and while this proposal does not allow
 changing the profile of the standard library and we expect that the use cases
-for doing so for build dependenies are minimal (see
+for doing so for build dependencies are minimal (see
 [stage1a][stage1a-host-deps]), users may expect to be able to do so. What they
 may not expect, however, is the increase in build times from needing to build
 the standard library an additional time for these dependencies.
@@ -931,7 +931,7 @@ user can enable `compiler-builtins/c`, they will need to manually configure
 `CFLAGS` to ensure that the C components will link with Rust code.
 
 [stage1a]: ./4-stage-1a.md
-[stage1a-host-deps]: ./4-stage-1a.md#why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts
+[stage1a-host-deps]: ./4-stage-1a.md#why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts-in-cross-compile-mode
 
 [background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
