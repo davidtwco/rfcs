@@ -33,8 +33,8 @@ When `build-std` is set to "always", then the standard library will be
 unconditionally recompiled ([?][rationale-unconditional]) in the release profile
 defined in its workspace as part of every clean build
 ([?][rationale-release-profile]). This is primarily useful for users of tier
-three targets. Like with other dependencies the build will inherit variables
-like `RUSTFLAGS` from the environment (see [unresolved-inherit-rustflags]).
+three targets. As with other dependencies, the standard library's build will
+respect the `RUSTFLAGS` environment variable.
 
 > [!NOTE]
 >
@@ -937,8 +937,11 @@ What should this configuration option be named?
 ## Should the standard library inherit RUSTFLAGS?
 [unresolved-inherit-rustflags]: #should-the-standard-library-inherit-rustflags
 
-The original opaque dependencies model gave them their own `RUSTFLAGS`. This RFC
-currently diverges from that - can the two be unified in some way?
+Existing designs for *[Opaque dependencies]* intended that `RUSTFLAGS` would not
+apply to the opaque dependency. However, if a target modifier were set using
+`RUSTFLAGS` and build-std ignored the variable, then rustc would fail to build
+the user's project due to incompatible target modifiers. This would necessitate
+that every stable target modifier be exposed via Cargo to be usable in practice.
 
 ↩ [*Proposal*][proposal]
 
