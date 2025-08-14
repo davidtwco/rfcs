@@ -888,10 +888,10 @@ has precedence over shared libraries and the symbols of a dynamically-linked
 [rationale-caching]: #why-not-globally-cache-builds-of-the-standard-library
 
 The standard library is no different than regular dependencies in being able to
-benefit from global caching of dependency builds. A generic proposal for global
-dependency caching is being worked on as part of [cargo#5931] and could support
-the standard library. It is out-of-scope of this proposal to propose a
-special-cased mechanism for this that applies only to the standard library.
+benefit from global caching of dependency builds. It is out-of-scope of this
+proposal to propose a special-cased mechanism for this that applies only to the
+standard library. [cargo#5931] tracks the feature request of intermediate
+artifact caching in Cargo.
 
 ↩ [*Caching*][caching]
 
