@@ -339,7 +339,8 @@ and cannot otherwise be found in the registry.
 >
 > When producing a registry index entry for a package Cargo will not serialise
 > any `builtin` dependencies it inferred. This allows the set of inferred
-> packages to change in the future if needed.
+> packages to change in the future if needed. Similarly, the published
+> `Cargo.toml` will not explicitly declare any inferred dependencies.
 
 *See the following sections for rationale/alternatives:*
 
