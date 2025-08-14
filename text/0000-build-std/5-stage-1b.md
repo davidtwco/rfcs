@@ -443,8 +443,9 @@ set like any other dependency.
 > }
 > ```
 
-[`cargo pkgid`][cargo-pkgid] when passed `-p core` would print `builtin#core` as
-the source, likewise with `alloc` and `std`.
+[`cargo pkgid`][cargo-pkgid] when passed `-p core` would print
+`builtin://.#core` as the source, likewise with `alloc` and `std`. This format
+complies with [Cargo's spec for Package IDs][cargo-pkgid-spec].
 
 [`cargo remove`][cargo-remove] will remove `core`, `alloc` or `std` explicitly
 from the manifest if invoked with those crate names (using the same heuristics
@@ -937,6 +938,7 @@ user can enable `compiler-builtins/c`, they will need to manually configure
 [background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
+[cargo-pkgid-spec]: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
 
