@@ -276,6 +276,11 @@ Build scripts and proc macros continue to use the prebuilt standard library as
 in stage 1a, and so explicit dependencies on the standard library are not
 supported in `build-dependencies`.
 
+*See the following sections for relevant unresolved questions:*
+
+- [*Should we support `build-dependencies`?*][unresolved-build-deps]
+
+
 ## Registries
 [registries]: #registries
 
@@ -833,6 +838,22 @@ be needlessly different to existing packages.
 
 ↩ [*Patches*][patches]
 
+## Should we support `build-dependencies`?
+[unresolved-build-deps]: #should-we-support-build-dependencies
+
+Allowing `builtin` dependencies to be regular and `dev` dependencies but not
+`build` dependencies is inconsistent with other dependencies.
+
+Cargo supports changing the profiles of these dependencies in a
+`[profile.dev.build-override]` section, and while this proposal does not allow
+changing the profile of the standard library and we expect that the use cases
+for doing so for build dependenies are minimal (see
+[stage1a][stage1a-host-deps]), users may expect to be able to do so. What they
+may not expect, however, is the increase in build times from needing to build
+the standard library an additional time for these dependencies.
+
+↩ [*Dev-dependencies and build-dependencies*][dev-dependencies-and-build-dependencies]
+
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
@@ -910,6 +931,7 @@ user can enable `compiler-builtins/c`, they will need to manually configure
 `CFLAGS` to ensure that the C components will link with Rust code.
 
 [stage1a]: ./4-stage-1a.md
+[stage1a-host-deps]: ./4-stage-1a.md#why-use-the-pre-built-standard-library-for-procedural-macros-and-build-scripts
 
 [background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
