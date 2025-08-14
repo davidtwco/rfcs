@@ -680,20 +680,27 @@ script, respectively.
 [rationale-replace-no_std]: #why-not-replace-no_std-as-the-source-of-truth-for-whether-a-crate-depends-on-std
 
 Crates can currently use the crate attribute `#![no_std]` to indicate a lack of
-dependency on `std`. With `build-std-crates` or explicit dependencies (as in
-[Stage 1b][stage1b]) allowing the user to specify a dependency on the standard
-library, it is unintuitive for there to be two sources-of-truth for this
-information.
+dependency on `std`. Introducing `build-std-crates` or explicit dependencies (as
+in [Stage 1b][stage1b]) would add a second way for the user to indicate a lack
+of dependency on the standard library. It could therefore be seen as desirable
+to deprecate `#![no_std]` so that there remains only a single way to express a
+dependency on the standard library.
 
 `#![no_std]` serves two purposes - it stops the compiler from loading `std` from
 the sysroot and adding `extern crate std`, and it prevents the user from
 depending on anything from `std` accidentally.
 
 `#![no_std]` could hypothetically be replaced by a lint to prevent use of the
-standard library and a change to the compiler so that it loads the `std`
+standard library and a change to the compiler so that it loads `std`
 speculatively unless it is used. However, while rustc does have some support for
 speculatively loading crates, it is not possible to do so and not declare them
 as a dependency in cross-crate metadata.
+
+Alternatively, the `#![no_std]` attribute could be deprecated and instead become
+a compiler flag that Cargo could pass when there is no dependency on std. While
+this would be worthwhile, it is only practical once this proposal's changes to
+Cargo have been widely adopted and Cargo is the source-of-truth for a dependency
+on the `std`, and so it is not proposed in this RFC.
 
 ↩ [*Interactions with `#![no_std]`*][interactions-with-no_std]
 
