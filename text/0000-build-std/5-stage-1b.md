@@ -291,7 +291,9 @@ Standard library dependencies will be present in the registry index
 [index's JSON schema][cargo-json-schema] ([?][rationale-cargo-builtindeps]).
 `builtin_deps` is similar to the existing `deps` key and contains a list of JSON
 objects, each representing a dependency that is "builtin" to the Rust toolchain
-and cannot otherwise be found in the registry.
+and cannot otherwise be found in the registry. The
+["publish" endpoint][cargo-registry-web-publish] of the Registry Web API will
+similarly be updated to support `builtin_deps`.
 
 > [!NOTE]
 >
@@ -938,6 +940,7 @@ user can enable `compiler-builtins/c`, they will need to manually configure
 [background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
+[cargo-registry-web-publish]: https://doc.rust-lang.org/cargo/reference/registry-web-api.html#publish
 [cargo-pkgid-spec]: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
