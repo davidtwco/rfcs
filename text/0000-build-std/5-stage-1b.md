@@ -647,15 +647,15 @@ dependencies to allow them to be easily used on `no_std` targets but users can
 still work around any legacy crates in the graph with
 [`build-std-crates`][stage1a].
 
-Alternative syntaxes, such as requiring `version = "*"` for explicit standard
-library dependencies, were considered to maintain a greater level of
-compatibility with older toolchain versions. However, any older version of Cargo
-would try to look for a specified dependency somewhere - if this lookup failed
-then the resolve would fail, and if it succeeded (by perhaps finding an empty
-`std` crate on crates.io) then these would override the prebuilt std when passed
-to rustc via `--extern`. It is not possible to direct any older version of Cargo
-to ignore a dependency. This is not a build-std specific issue and is true of
-any RFC adding to what can be written in `Cargo.toml`.
+Alternative syntaxes for explicit standard library dependencies were considered
+to maintain manifest compatibility with older versions of Cargo. However, there
+is no way for older versions of Cargo to behave correctly when encountering a
+builtin dependency (i.e. ignore them). Builtin dependencies must also be treated
+differently when serialising the registry index schema by adding them to a
+separate field for dependencies, which older versions of Cargo would not be
+aware of. Requiring a new Cargo version to understand the manifest is common
+for new Cargo features, but we do maintain compatibility for index entries as
+described in [registries].
 
 ↩ [*Proposal*][proposal]
 
@@ -812,7 +812,7 @@ stabilisation and aren't pertinent to the overall design:
 [unresolved-dep-syntax]: #what-syntax-is-used-to-identify-dependencies-on-the-standard-library-in-cargotoml
 
 What syntax should be used for the explicit standard library dependencies?
-`builtin = true`? `sysroot = true`? `version = "*"`?
+`builtin = true`? `sysroot = true`?
 
 ↩ [*Proposal*][proposal]
 
