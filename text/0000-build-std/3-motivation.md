@@ -113,18 +113,30 @@ these motivations harder to solve in future:
 
 1. **Modifying the source code of the standard library** ([wg-cargo-std-aware#7])
 
-  - Some platforms require a heavily modified standard library that would not
-    be suitable for upstreaming, such as [Apache's SGX SDK][sgx] which replaces
-    some standard library and ecosystem crates with forks or custom crates for a
-    custom `x86_64-unknown-linux-sgx` target
+    - Some platforms require a heavily modified standard library that would not
+      be suitable for upstreaming, such as [Apache's SGX SDK][sgx] which
+      replaces some standard library and ecosystem crates with forks or custom
+      crates for a custom `x86_64-unknown-linux-sgx` target
 
-  - Similarly, some tier three targets may wish to patch standard library
-    dependencies to add or improve support for the target
+    - Similarly, some tier three targets may wish to patch standard library
+      dependencies to add or improve support for the target
+
+    Supporting such users is very difficult to do so given that the standard
+    library's internals and its dependencies change often. Users wishing to do
+    this can instead fork the toolchain rather than modifying a toolchain
+    shipped by the rust project.
 
 2. **Retire the concept of the sysroot**
 
-  - Earlier proposals for build-std were motivated in-part by the desire to see
-    the concept of the sysroot retired
+    Earlier proposals for build-std were motivated in-part by the desire to see
+    the concept of the sysroot retired.
+
+    Doing this in a backwards-compatible way is difficult considering that many
+    users use build systems other than Cargo that assume rustc can find any
+    standard library dependencies. Many artifacts other than the standard
+    library also live in the sysroot meaning that the scope of any alternative
+    would be large. In addition, removing the sysroot does not significantly
+    help achieve previously stated motivations in this RFC.
 
 [cargo-xbuild]: https://github.com/rust-osdev/cargo-xbuild
 [xargo]: https://github.com/japaric/xargo
