@@ -64,11 +64,13 @@ rustup and placed in the sysroot under `lib/rustlib/src/`. The sources consist
 of the `library/` workspace plus `src/llvm-project/libunwind`, which was
 required in the past to build the `unwind` crate on some targets.
 
-Cargo supports explicitly declaring a dependency on the standard library with
-a `path` source (e.g. `core = { path = "../my_core" }`), but crates with these
-dependencies are not accepted by crates.io. There are crates on GitHub that
-use this pattern, such as [embed-rs/stm32f7-discovery][embed-rs-cargo-toml],
-which are used as `git` dependencies of other crates on GitHub.
+Cargo supports explicitly declaring a dependency on crates with the same names
+as standard library crates with a `path` source
+(e.g. `core = { path = "../my_core" }`), which rustc will load instead of crates
+in the sysroot. Crates with these dependencies are not accepted by crates.io,
+but there are crates on GitHub that use this pattern, such as
+[embed-rs/stm32f7-discovery][embed-rs-cargo-toml], which are used as `git`
+dependencies of other crates on GitHub.
 
 ### Dependencies
 [background-dependencies]: #dependencies
