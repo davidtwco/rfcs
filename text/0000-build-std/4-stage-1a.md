@@ -354,16 +354,21 @@ for discussion of the `compiler-builtins-c` feature.
 
 The `mem` feature of `compiler_builtins` (and the subsequent
 `compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
-`compiler_builtins/mem`) is required by `no_std` crates as a `std` dependency
-will not be providing these symbols through its dependency on `libc`.
+`compiler_builtins/mem`) will be inverted to a new feature named `external-mem`
+([?][rationale-no-mem]). This will not be a default feature, so
+`compiler_builtins` will provide mem symbols unless the `external-mem` is
+provided.
 
-It is necessary that the `compiler-builtins-mem` feature of `alloc` and/or
-`core` be enabled when `libc` is not in the crate graph
-([?][rationale-no-weak-linkage]).
+`std`, which dynamically links to `libc`, will depend on the `external-mem`
+feature. `no_std` users providing their own mem symbols can rely on weak linkage
+to override the ones provided by `compiler_builtins` or provide the
+`external-mem` feature with an unstable feature in scenarios where weak linkage
+is not an option ([?][rationale-no-weak-linkage]).
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why not use weak linkage for `compiler-builtins/mem` symbols?*][rationale-no-weak-linkage]
+- [*Why invert the `mem` feature?*][rationale-no-mem]
+- [*Why not rely on weak linkage for `compiler-builtins/mem` symbols?*][rationale-no-weak-linkage]
 
 ## Caching
 [caching]: #caching
@@ -869,6 +874,22 @@ of the standard library also use unstable features and it is not practical to
 special-case all of these crates.
 
 ↩ [*Building the standard library on a stable toolchain*][building-the-standard-library-on-a-stable-toolchain]
+
+### Why invert the `mem` feature?
+[rationale-no-mem]: #why-invert-the-mem-feature
+
+Currently the `mem` feature is enabled for `no_std` platforms in the
+`compiler_builtins` `build.rs` file. Inverting a Cargo feature might seem like
+an antipattern as "negative" features are discouraged because of how features
+unify (e.g. `std` features are preferred to `no_std`).
+
+However, the `mem` feature is difficult to use as either `std` or the user may
+want to turn the feature off. Because many different crates in the standard
+library workspace depend on `compiler_builtins` this negative must be forwarded
+to all of them to correctly disable the feature which is quite tricky to do.
+This shows that the `mem` feature is actually the wrong way around.
+
+↩ [*`compiler-builtins-mem`*][compiler-builtins-mem]
 
 ### Why not use weak linkage for `compiler-builtins/mem` symbols?
 [rationale-no-weak-linkage]: #why-not-use-weak-linkage-for-compiler-builtinsmem-symbols
