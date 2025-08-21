@@ -620,7 +620,7 @@ See
 
 ↩ [*Proposal*][proposal]
 
-### Why not build the standard library in incremental?
+## Why not build the standard library in incremental?
 [rationale-incremental]: #why-not-build-the-standard-library-in-incremental
 
 The standard library sources are not intended to be modified locally, similarly
@@ -630,7 +630,7 @@ change.
 
 ↩ [*Proposal*][proposal]
 
-### Why not produce a `dylib` for the standard library?
+## Why not produce a `dylib` for the standard library?
 [rationale-no-dylib]: #why-not-produce-a-dylib-for-the-standard-library
 
 The standard library supports being built as both a `rlib` and a `dylib` and
@@ -709,7 +709,7 @@ on the `std`, and so it is not proposed in this RFC.
 
 ↩ [*Interactions with `#![no_std]`*][interactions-with-no_std]
 
-### Why remove `restricted_std`?
+## Why remove `restricted_std`?
 [rationale-remove-restricted-std]: #why-remove-restricted_std
 
 `restricted_std` was originally added as part of a mechanism to enable the
@@ -729,7 +729,7 @@ layer, but this mechanism does not use `restricted_std`.
 
 ↩ [*`restricted_std`*][restricted_std]
 
-### Why disallow custom targets?
+## Why disallow custom targets?
 [rationale-disallow-custom-targets]: #why-disallow-custom-targets
 
 While custom targets can be used on stable today, in practice, they are only
@@ -745,7 +745,7 @@ stable is covered in [rust#71009].
 
 ↩ [*Custom targets*][custom-targets]
 
-### Why prevent rustc from loading root dependencies from the sysroot?
+## Why prevent rustc from loading root dependencies from the sysroot?
 [rationale-root-sysroot-deps]: #why-prevent-rustc-from-loading-root-dependencies-from-the-sysroot
 
 Loading root dependencies from the sysroot could be a source of bugs.
@@ -777,7 +777,7 @@ providing an empty path.
 
 ↩ [*Preventing implicit sysroot dependencies*][preventing-implicit-sysroot-dependencies]
 
-### Why use `noprelude` with `--extern`?
+## Why use `noprelude` with `--extern`?
 [rationale-noprelude-with-extern]: #why-use-noprelude-with---extern
 
 rustc's existing behaviour of implicitly loading `std` and adding it to the
@@ -794,7 +794,7 @@ the user.
 
 ↩ [*Preventing implicit sysroot dependencies*][preventing-implicit-sysroot-dependencies]
 
-### Why not allow the source path for the standard library be customised?
+## Why not allow the source path for the standard library be customised?
 [rationale-custom-src-path]: #why-not-allow-the-source-path-for-the-standard-library-be-customised
 
 It is not a goal of this proposal to enable or improve the usability of custom
@@ -802,7 +802,7 @@ or modified standard libraries.
 
 ↩ [*Vendored `rust-src`*][vendored-rust-src]
 
-### Why vendor the standard library's dependencies?
+## Why vendor the standard library's dependencies?
 [rationale-vendoring]: #why-vendor-the-standard-librarys-dependencies
 
 Vendoring the standard library is possible since it currently has its own
@@ -842,7 +842,7 @@ See
 
 ↩ [*Vendored `rust-src`*][vendored-rust-src]
 
-### Why not check if `rust-src` has been modified?
+## Why not check if `rust-src` has been modified?
 [rationale-src-modifications]: #why-not-check-if-rust-src-has-been-modified
 
 This is in line with other immutable dependency sources (like registry or git).
@@ -855,7 +855,7 @@ included.
 
 ↩ [*Vendored `rust-src`*][vendored-rust-src]
 
-### Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?
+## Why allow building from the sysroot with implied `RUSTC_BOOTSTRAP`?
 [rationale-implied-bootstrap]: #why-allow-building-from-the-sysroot-with-implied-rustc_bootstrap
 
 Cargo needs to be able to build the standard library crates, which inherently
@@ -875,7 +875,7 @@ special-case all of these crates.
 
 ↩ [*Building the standard library on a stable toolchain*][building-the-standard-library-on-a-stable-toolchain]
 
-### Why invert the `mem` feature?
+## Why invert the `mem` feature?
 [rationale-no-mem]: #why-invert-the-mem-feature
 
 Currently the `mem` feature is enabled for `no_std` platforms in the
@@ -891,7 +891,7 @@ This shows that the `mem` feature is actually the wrong way around.
 
 ↩ [*`compiler-builtins-mem`*][compiler-builtins-mem]
 
-### Why not use weak linkage for `compiler-builtins/mem` symbols?
+## Why not use weak linkage for `compiler-builtins/mem` symbols?
 [rationale-no-weak-linkage]: #why-not-use-weak-linkage-for-compiler-builtinsmem-symbols
 
 Since [compiler-builtins#411], the relevant symbols in `compiler_builtins`
@@ -905,7 +905,7 @@ has precedence over shared libraries and the symbols of a dynamically-linked
 
 ↩ [*`compiler-builtins-mem`*][compiler-builtins-mem]
 
-### Why not globally cache builds of the standard library?
+## Why not globally cache builds of the standard library?
 [rationale-caching]: #why-not-globally-cache-builds-of-the-standard-library
 
 The standard library is no different than regular dependencies in being able to
