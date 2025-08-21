@@ -129,11 +129,12 @@ language features only when they are a dependency of the standard library.
 [background-features]: #features
 
 There are a handful of features defined in the standard library crates'
-`Cargo.toml`s. There is currently no stable existing mechanism for users to
-enable or disable these features. The default set of features is determined by
-[logic in bootstrap][bootstrap-features-logic] and [the `rust.std-features`
-key in `bootstrap.toml`][bootstrap-features-toml]. The enabled features are
-often different depending on the target.
+`Cargo.toml`s. These features are not strictly additive (`llvm-libunwind` and
+`system-llvm-libunwind` are mutually exclusive). There is currently no stable
+existing mechanism for users to enable or disable these features. The default
+set of features is determined by [logic in bootstrap][bootstrap-features-logic]
+and [the `rust.std-features` key in `bootstrap.toml`][bootstrap-features-toml].
+The enabled features are often different depending on the target.
 
 It is also common for user crates to depend on the standard library (via
 `#![no_std]`) conditional on Cargo features being enabled or disabled (e.g. a
