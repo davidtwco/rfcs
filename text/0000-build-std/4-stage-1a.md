@@ -1,3 +1,15 @@
+# Stage 1a: `build-std=always`
+
+This stage proposes adding a `build-std = "always|never"` option to the Cargo
+configuration which will unconditionally re-build the standard library crates
+listed in a new `build-std-crates` option.
+
+This is aimed at supporting the following [motivations](./3-motivation.md):
+
+- Building the standard library on a stable toolchain without Cargo
+- Building standard library crates that are not shipped for a target
+- Using the standard library with tier three targets
+
 # Proposal
 [proposal]: #proposal
 

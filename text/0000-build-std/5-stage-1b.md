@@ -1,3 +1,16 @@
+# Stage 1b: Explicit dependencies
+
+This stage proposes supporting explicit dependencies on the standard library
+crates in `Cargo.toml`. This enables Cargo to determine which standard library
+crates are required by the crate graph without `build-std-crates` being set and
+for different crates to require different standard library crates.
+
+While not directly necessary for our core listed motivations, this stage allows
+future extensions which support public/private standard library dependencies or
+enabling features of the standard library. Allowing the standard library to
+behave similarly to other dependencies reduces user friction and can improve
+build times.
+
 # Proposal
 [proposal]: #proposal
 

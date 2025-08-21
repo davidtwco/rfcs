@@ -1,3 +1,11 @@
+# Stage 3: `build-std=match-profile`
+
+This stage proposes extending the `build-std` option with new values which
+automatically rebuild the standard library to match the user's current profile.
+
+This is aimed at allowing users to rebuild the standard library with different
+codegen flags or profile (as per [motivations](./3-motivation.md)).
+
 # Proposal
 [proposal]: #proposal
 

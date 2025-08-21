@@ -1,3 +1,13 @@
+# Stage 2: `build-std=compatible`
+
+This stage proposes extending the `build-std` option with a new `compatible`
+value, which will become the default and automatically rebuild the standard
+library when it is necessary to maintain compatibility with the compiler flags
+used by the rest of the crate graph.
+
+This is aimed at unblocking the stabilisation of ABI-modifying compiler flags
+(as per [motivations](./3-motivation.md)).
+
 # Proposal
 [proposal]: #proposal
 
@@ -40,8 +50,7 @@ incompatible with the rest of the crate (due to use of target modifiers).
 
 The standard library will be rebuilt in its release profile and will only vary
 in the target modifier flags necessarily for it to be compatible
-([?][rationale-release-profile]). This is primarily useful for prospective users
-of target modifier flags.
+([?][rationale-release-profile]).
 
 Pre-built available? | User's profile | Target modifiers changed? | Standard library re-built?
 -------------------- | -------------- | ------------------------- | --------------------------

@@ -213,7 +213,7 @@ context for the proposals of earlier stages.
 
     - Proposes adding a `build-std = "always|never"` option to the Cargo
       configuration which will unconditionally re-build the standard library
-      crates listed in the `build-std-crates` option
+      crates listed in a new `build-std-crates` option
 
     - [Proposal](./4-stage-1a.md#proposal)
 
