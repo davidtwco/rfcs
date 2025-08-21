@@ -15,17 +15,17 @@ rationale:
 
 - It saves Rust users from having to rebuild the standard library whenever they
   start a project or do a clean build
-- The standard library has and has had dependencies which require a more complicated
-  build environment than typical Rust projects
-  - e.g. requiring a working C toolchain to build `compiler-builtins`' `c` feature
-- To varying degrees at different times in its development, the standard library's
-  implementation has been tied to the compiler implementation and has had to change
-  in lockstep
+- The standard library has and has had dependencies which require a more
+  complicated build environment than typical Rust projects
+  - e.g. requiring a working C toolchain to build `compiler-builtins`' `c`
+    feature
+- To varying degrees at different times in its development, the standard
+  library's implementation has been tied to the compiler implementation and has had
+  to change in lockstep
 
-Not all targets support the standard library or have a pre-built standard
-library distributed via rustup. This depends on the tier of support for the
-target. According to rustc's [platform support][platform-support] documentation,
-for tier three targets:
+Not all targets have a pre-built standard library distributed via rustup, though
+it is a minimum requirement for certain platform support tiers. According to
+rustc's [platform support docs][platform-support], for tier three targets:
 
 > Tier 3 targets are those which the Rust codebase has support for, but which
 > the Rust project does not build or test automatically, so they may or may not
@@ -43,6 +43,11 @@ for tier three targets:
 > The Rust project builds official binary releases for each tier 1 target, and
 > automated testing ensures that each tier 1 target builds and passes tests
 > after each change.
+
+As an innate property of the target, not all targets can support the `std` crate
+This is independent of its tier, where as stated in the
+[Target Tier Policy][target-tier-policy] lower-tier targets may not have a
+complete implementation for all APIs in the crates they can support.
 
 All of the standard library crates leverage permanently unstable features
 provided by the compiler that will never be stabilised and therefore require
