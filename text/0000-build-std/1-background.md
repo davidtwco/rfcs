@@ -148,14 +148,15 @@ conditional compilation [configuration options][conditional-compilation-config-o
 and often correspond to parts of the target triple (for example,
 `CARGO_CFG_TARGET_OS` corresponds to the "os" part of a target triple - "linux"
 in "aarch64-unknown-linux-gnu"). This filtering is strict enough to distinguish
-between built-in targets but loose enough to match similar custom targets.
+between built-in targets but loose enough to match similar custom targets. There
+is no equivalent mechanism on the `alloc` or `core` crates.
 
 When encountering an unknown or unsupported operating system then the
 `restricted_std` cfg is set. `restricted_std` marks the entire standard library
 as unstable, requiring `feature(restricted_std)` to be enabled on any crate that
-depends on it. There is no mechanism for users to enable the `restricted_std`
-feature on behalf of dependencies. There is also no such mechanism for `alloc`
-or `core`, only `std`.
+depends on it. The only way for users to enable the `restricted_std` feature on
+behalf of dependencies is the uncommon `-Zcrate-attr=features(restricted_std)`
+rustc flag and users commonly report that they are not aware how to do this.
 
 Cargo and rustc support custom targets, defined in JSON files according to an
 unstable schema defined in the compiler. On nightly, users can dump the
