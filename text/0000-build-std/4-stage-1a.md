@@ -231,6 +231,10 @@ of standard library dependencies will not need be fetched from crates.io.
 - [*Why vendor standard library dependencies?*][rationale-vendoring]
 - [*Why not check if `rust-src` has been modified?*][rationale-src-modifications]
 
+*See the following sections for relevant unresolved questions:*
+
+- [*Should `rust-src` be a default component?*][unresolved-rust-src]
+
 ## Panic strategies
 [panic-strategies]: #panic-strategies
 
@@ -965,6 +969,19 @@ the user's project due to incompatible target modifiers. This would necessitate
 that every stable target modifier be exposed via Cargo to be usable in practice.
 
 ↩ [*Proposal*][proposal]
+
+## Should `rust-src` be a default component?
+[unresolved-rust-src]: #should-rust-src-be-a-default-component
+
+Ensuring `rust-src` is a default component reduces friction for users, and CI,
+who have to otherwise need to install the component manually the first time they
+use `build-std`.
+
+On the other hand this increases their storage and bandwidth costs, plus
+bandwidth costs for the project. The impact on usability is limited for the user
+to once per toolchain as the component persists through updates.
+
+↩ [*Vendored rust-src*][vendored-rust-src]
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
