@@ -307,22 +307,25 @@ need.
 [rationale-in-rustup]: #shouldnt-build-std-be-part-of-rustup
 
 build-std is effectively creating a new sysroot with a customised standard
-library. rustup as Rust's toolchain manager has lots of existing machinery
-to create and maintain sysroots. rustup knows how to download `rust-src`, it
-knows how to create a new toolchain from an existing sysroot (as in
-`rustup toolchain link`), it would only need to learn how to invoke Cargo on the
-`rust-src` sources. rustup would be invoking tools from the next layer of
-abstraction (Cargo) in the same way that Cargo invokes tools from the layer of
-abstraction after it (rustc).
+library. rustup as Rust's toolchain manager has existing machinery to create and
+maintain sysroots, and if it could invoke Cargo to build the standard library
+then it could create a new toolchain from a build from a `rust-src` component.
+rustup would be invoking tools from the next layer of abstraction (Cargo) in the
+same way that Cargo invokes tools from the layer of abstraction after it
+(rustc).
 
 A brief prototype of this idea was created and a
 [short design document was drafted][why-not-rustup] before concluding that it
-would not be possible. With Cargo's artifact dependencies, it may be desirable
+would not be possible. With Cargo's artifact dependencies it may be desirable
 to build with a different standard library and if rustup was creating different
 toolchains per-customised standard library then Cargo would need to have
 knowledge of these to switch between them, which isn't possible (and something
 of a layering violation). It is also unclear how Cargo would find and use the
-uncustomized host sysroot for build scripts and procedural macros.
+uncustomized host sysroot for build scripts and procedural macros. In addition
+rustup's knowledge of sysroots and toolchains is limited to the archives it
+unpacks - it becoming a part of the build system is not trivial, especially
+considering it uses a different versioning system to Cargo, Rust and the
+standard library.
 
 [davidtwco]: https://github.com/davidtwco
 [adamgemmell]: https://github.com/adamgemmell
