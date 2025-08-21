@@ -173,7 +173,7 @@ crates.io.
 ## Patches
 [patches]: #patches
 
-Under a perma-unstable feature it is permitted to patch the standard library
+Under a perma-unstable feature it is permitted to patch standard library
 dependencies with `path` and `git` sources (or any other source)
 ([?][rationale-patching]):
 
@@ -198,7 +198,7 @@ As with dependencies, crates with `path`/`git` patches for `core`, `alloc` or
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why unstably permit patching of the standard library dependencies?*][rationale-patching]
+- [*Why unstably permit patching of standard library dependencies?*][rationale-patching]
 
 *See the following sections for relevant unresolved questions:*
 
@@ -626,10 +626,9 @@ added manually by users, however:
 [rationale-unstable-builtin-crates]: #why-unstably-allow-all-names-for-builtin-crates
 
 For any crate shipped with the standard library in the sysroot, the user can
-already write an `extern crate` declaration to use it. All crates other than
-`std`, `alloc` or `core` are marked unstable either explicitly or implicitly
-with the use of `-Zforce-unstable-if-unmarked` so this does not allow items from
-these crates to be used on stable.
+already write an `extern crate` declaration to use it. Most are marked unstable
+either explicitly or implicitly with the use of `-Zforce-unstable-if-unmarked`
+so this does not allow items from these crates to be used on stable.
 
 For example, some users write benchmarks using `libtest` and have written
 `extern crate test` without the `#[cfg(test)]` attribute to load the crate.

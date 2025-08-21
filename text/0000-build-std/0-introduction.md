@@ -144,10 +144,11 @@ Thanks to [Jacob Bramley][jacobbramley] for their feedback on early drafts.
 
 The following terminology is used throughout the RFC:
 
-- "the standard library" is used to refer to all of the crates that comprise the
-  standard library - `core`, `alloc` and `std`
-- "std" is used to refer only to the `std` crate, not the entirety of the standard
-  library
+- "the standard library" is used to refer to multiple of the crates that
+  constitute the standard library such as `core`, `alloc`, `std`, `test`,
+  `proc_macro` or their dependencies.
+- "std" is used to refer only to the `std` crate, not the entirety of the
+  standard library
 
 Throughout the RFC's "Proposal" sections, parentheses with "?" links will be
 present that which link the relevant section in the appropriate "Rationale and

@@ -46,7 +46,7 @@ respect the `RUSTFLAGS` environment variable.
 
 Alongside `build-std`, a `build-std-crate` key will be introduced
 ([?][rationale-build-std-crate]), which can be used to specify which crates from
-the standard library is to be built. Only "core", "alloc" and "std" are valid
+the standard library are to be built. Only "core", "alloc" and "std" are valid
 values for `build-std-crate`.
 
 ```toml
@@ -147,8 +147,8 @@ extern prelude.
 ## `restricted_std`
 [restricted_std]: #restricted_std
 
-The existing `restricted_std` mechanism will be removed from the standard
-library's [`build.rs`][std-build.rs].
+The existing `restricted_std` mechanism will be removed from `std`'s
+[`build.rs`][std-build.rs].
 
 *See the following sections for rationale/alternatives:*
 
