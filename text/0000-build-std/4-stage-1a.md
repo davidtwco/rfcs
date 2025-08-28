@@ -1,7 +1,7 @@
 # Stage 1a: `build-std=always`
 
 This stage proposes adding a `build-std = "always|never"` option to the Cargo
-configuration which will unconditionally re-build the standard library crates
+configuration which will unconditionally rebuild the standard library crates
 listed in a new `build-std-crates` option.
 
 This is aimed at supporting the following [motivations](./3-motivation.md):
@@ -37,9 +37,9 @@ The `build-std` configuration locations have the following precedence
 2. `[target.<cfg>]`
 3. `[build]`
 
-As the Cargo configuration is local to the current installation of Cargo
-(typically in `~/.config/cargo`), the value of `build-std` is not influenced by
-the dependencies of the current crate.
+As the Cargo configuration is local to the current user (typically in
+`.config/cargo.toml` in the project root and/or Cargo home directory), the value
+of `build-std` is not influenced by the dependencies of the current crate.
 
 When `build-std` is set to "always", then the standard library will be
 unconditionally recompiled ([?][rationale-unconditional]) in the release profile
