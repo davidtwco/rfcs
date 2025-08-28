@@ -171,8 +171,10 @@ categories:
    divergence. `compiler-builtins/c` can have a significant impact on code
    quality and build size. It also has a `mem` feature which provides symbols
    (`memcpy`, etc) for platforms without `std` that don't have these same
-   symbols provided by `libc`. compiler-builtins is also built with a large
-   number of compilation units to force each function into a different unit.
+   symbols provided by `libc`. `compiler_builtins` is also built with a large
+   number of compilation units to force each function into a different unit,
+   avoiding unintentionally bringing in a symbol that conflicts with one in the
+   system's `libgcc`.
 
    ['unwind'][wg-cargo-std-aware#29] links to the system's version of libunwind.
    Enabling the `llvm-libunwind` feature, `-Clink-self-contained` or

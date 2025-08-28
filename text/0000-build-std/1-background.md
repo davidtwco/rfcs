@@ -17,7 +17,7 @@ rationale:
   start a project or do a clean build
 - The standard library has and has had dependencies which require a more
   complicated build environment than typical Rust projects
-  - e.g. requiring a working C toolchain to build `compiler-builtins`' `c`
+  - e.g. requiring a working C toolchain to build `compiler_builtins`' `c`
     feature
 - To varying degrees at different times in its development, the standard
   library's implementation has been tied to the compiler implementation and has had
@@ -99,8 +99,8 @@ directory for the corresponding crate.
 Historically, there have necessarily been C dependencies of the standard library,
 increasing the complexity of the build environment required. While these have
 largely been removed over time - for example, `libbacktrace` previously depended
-on `backtrace-sys` but now uses `gimli` ([rust#46439]) - there are still some C
-dependencies:
+on `backtrace-sys` but now uses `gimli` ([rust#46439]), a pure-rust
+implementation. There are still some C dependencies:
 
 - `libunwind` will either link to the LLVM `libunwind` or the system's
   `libunwind`/`libgcc_s`. LLVM's `libunwind` is shipped as part of the
@@ -214,15 +214,16 @@ a function annotated with `#[panic_handler]`. There can only be one
 (e.g. arithmetic overflow or out-of-bounds access) and the `core::panic!` macro
 immediately delegates to the panic handler crate.
 
-`std` is also a panic handler. `std`'s panic handler and `std::panic!` macro
-print panic information to stderr and delegate to a *panic runtime* to decide
-what to do next, determined by the *panic strategy*.
+`std` is also a panic handler. `std`'s panic handler function and its
+`std::panic!` macro print panic information to stderr and delegate to a
+*panic runtime* to decide what to do next, determined by the *panic strategy*.
 
-There are two panic runtime crates in the standard library - `panic_unwind` and
-`panic_abort` - each with a corresponding panic strategy. Each target supported
-by rustc specifies a default panic strategy - either "unwind" or "abort" -
-though these are only relevant if `std`'s panic handler is used (i.e. the target
-isn't a `no_std` target or being used with a `no_std` crate).
+There are two panic runtime crates in the standard library - `panic_unwind`
+(which gracefully unwinds the stack using `libunwind` and performs cleanup) and
+`panic_abort` (which terminates the program shortly after being called). Each
+target supported by rustc specifies a default panic strategy - either "unwind"
+or "abort" - though these are only relevant if `std`'s panic handler is used
+(i.e. the target isn't a `no_std` target or being used with a `no_std` crate).
 
 Rust's `-Cpanic` flag allows the user to choose the panic strategy, with the
 target's default as a fallback. If `-Cpanic=unwind` is provided then this
@@ -241,8 +242,9 @@ on the `panic_unwind` crate.
 
 `core` also has a `panic_immediate_abort` feature which modifies the
 `core::panic!` macro to immediately call the abort intrinsic without calling the
-panic handler. `std` and `alloc` have the same feature which enable the feature
-in `core`. `std`'s feature also adds an immediate abort to its `panic!` macro.
+panic handler, which can dramatically reduce code size. `std` and `alloc` have
+the same feature which enable the feature in `core`. `std`'s feature also adds
+an immediate abort to its `panic!` macro.
 
 ## Cargo
 [background-cargo]: #cargo
