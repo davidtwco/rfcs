@@ -58,21 +58,24 @@ respect the `RUSTFLAGS` environment variable.
 
 Alongside `build-std`, a `build-std-crate` key will be introduced
 ([?][rationale-build-std-crate]), which can be used to specify which crates from
-the standard library are to be built. Only "core", "alloc" and "std" are valid
-values for `build-std-crate`.
+the standard library are dependencies of the current project. Only "core",
+"alloc" and "std" are valid values for `build-std-crate`.
 
 ```toml
 [build]
 build-std-crate = "std"
 ```
 
-If [*Stage 1b* of this proposal][stage1b] is implemented then `build-std-crate`
-will not be used unless explicitly set and the crate graph's dependencies on the
-standard library will determine which crates are built instead. Otherwise,
-`build-std-crate` will default to "std".
+A value of "std" means that every crate in the graph has a direct dependency on
+`std`, `alloc` and `core`. Similarly, "alloc" means `alloc` and `core`, and
+"core" means just `core`.
+
+If [*Stage 1b* of this proposal][stage1b] is implemented then `builtin`
+dependencies will be used if `build-std-crates` is not explicitly set.
+Otherwise, `build-std-crate` will default to "std".
 
 If `std` is to be built and Cargo is building a test using the default test
-harness then Cargo will also build the `test` crate.
+harness then Cargo will also add the `test` crate as a dependency.
 
 > [!NOTE]
 >
@@ -88,14 +91,14 @@ harness then Cargo will also build the `test` crate.
 >   the dependencies of the `core`, `alloc` or `std` standard library crates
 >   individually (via profile overrides, for example).
 >
-> - The profile defined by the standard library will be used.
+> - The release profile defined by the standard library will be used.
 >
 > Cargo will resolves the dependencies of opaque dependencies, such as the
 > standard library, separately in their own workspaces. The root of such a
-> resolve will be the crate specified in `build-std-crates`, or, if stage 1b is
+> resolve will be the crates specified in `build-std-crates` or, if stage 1b is
 > implemented, the unified set of packages that any crate in the dependency has
 > a direct dependency on. A dependency on the relevant roots are added to all
-> crates in the "parent" resolve.
+> crates in the main resolve.
 >
 > Regardless of which standard library crates are being built, Cargo will build
 > the `sysroot` crate of the standard library workspace. `alloc` and `std` will
@@ -143,6 +146,10 @@ target in the project.
 - [*What should the "always" and "never" values of `build-std` be named?*][unresolved-config-values]
 - [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
 - [*Should the standard library inherit RUSTFLAGS?*][unresolved-inherit-rustflags]
+
+*See the following sections for future possibilities:*
+
+- [*Allow reusing sysroot artifacts if available*][future-reuse-sysroot]
 
 ## Interactions with `#![no_std]`
 [interactions-with-no_std]: #interactions-with-no_std
@@ -999,6 +1006,17 @@ to once per toolchain as the component persists through updates.
 [future-possibilities]: #future-possibilities
 
 There are many possible follow-ups to Stage 1a:
+
+## Allow reusing sysroot artifacts if available
+[future-reuse-sysroot]: #allow-reusing-sysroot-artifacts-if-available
+
+This stage proposes rebuilding all required crates unconditionally as this fits
+Cargo's existing compilation model better. However, just building a crate
+equivalent to one already in the sysroot is inefficient. Cargo could learn when
+to reuse artifacts in the sysroot when equivalent to ones it intends to build,
+but this is complex enough to warrant its own proposal if desired.
+
+↩ [*Proposal*][proposal]
 
 ## Allow custom targets with build-std
 [future-custom-targets]: #allow-custom-targets-with-build-std
