@@ -267,7 +267,7 @@ If Cargo is not building `std`, then neither of the panic runtimes will be
 built. In this circumstance rustc will continue to throw an error when a
 unwinding panic strategy is chosen.
 
-If the Cargo would build `std` for a project then Cargo's behaviour depends on
+If Cargo would build `std` for a project then Cargo's behaviour depends on 
 whether or not `panic` is set in the profile:
 
 - If `panic` is not set in the profile then unwinding may still be the default
