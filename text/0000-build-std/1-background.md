@@ -173,11 +173,11 @@ configuration options.
 ## Prelude
 [background-prelude]: #prelude
 
-rustc has the concept of the "extern prelude" which are the set of crates that
-have been loaded by the compiler as direct dependencies. Originally this was
-populated by users writing `extern crate $crate` in their code for each direct
-dependency. Since the 2018 edition, crates passed via `--extern` are
-automatically loaded and added to the extern prelude.
+rustc has the concept of the "extern prelude" which is effectively the set of
+crates that can be referred to without an explicit `extern crate` statement.
+Originally this was populated by users writing `extern crate $crate` in their
+code for each direct dependency. Since the 2018 edition, crates passed via
+`--extern` are automatically loaded and added to the extern prelude.
 
 `std` is automatically loaded and added to the extern prelude. For `#![no_std]`
 crates, `core` is loaded and added to the extern prelude instead. For `std` or

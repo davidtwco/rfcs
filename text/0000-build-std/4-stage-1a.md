@@ -808,12 +808,12 @@ extern prelude will not be changed as part of this RFC. Adding The `noprelude`
 modifier for `--extern` is necessary for use of the `--extern` flag to be
 equivalent to loading from a sysroot.
 
-Without `noprelude`, rustc implicitly inserts a `extern crate $name` when using
+Without `noprelude`, rustc adds crates to the extern prelude when passed in with
 `--extern`. As a consequence, if a newly-built `alloc` were passed using
 `--extern alloc=alloc.rlib` then `extern crate alloc` would not be required to
-use the locally-built `alloc`, but it would be to use the pre-built `alloc`. This
-difference in how a crate is made available to rustc should not be observable to
-the user.
+use the locally-built `alloc`, but it would be to use the pre-built `alloc`.
+This difference in how a crate is made available to rustc should not be
+observable to the user.
 
 ↩ [*Preventing implicit sysroot dependencies*][preventing-implicit-sysroot-dependencies]
 
