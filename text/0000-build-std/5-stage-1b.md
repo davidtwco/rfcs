@@ -92,7 +92,9 @@ optional `alloc` and non-optional `core`). `core` cannot be optional.
 Dependencies with `builtin = true` cannot be renamed with the `package` key
 ([?][rationale-package-key]). It is not possible to perform source replacement
 on the `builtin` source using the `[source]` Cargo config table
-([?][rationale-source-replacement]).
+([?][rationale-source-replacement]), and nor is it possible to override
+`builtin` dependencies with the `[replace]` sections or `paths` overrides
+([?][rationale-overriding-builtins]), though [patching][patches] is permitted.
 
 Dependencies with `builtin = true` can be specified as platform-specific
 dependencies:
@@ -712,6 +714,14 @@ not supported. Source replacement of the `builtin` source could be a way to
 support this in future but this is out-of-scope for this proposal.
 
 See [*Allow `builtin` source replacement*][future-source-replacement].
+
+↩ [*Proposal*][proposal]
+
+## Why not permit overriding dependencies with `replace` or `paths`?
+[rationale-overriding-builtins]: #why-not-permit-overriding-dependencies-with-replace-or-paths
+
+For similar reasons to [source replacement][rationale-source-replacement] this
+is considered out-of-scope for this proposal.
 
 ↩ [*Proposal*][proposal]
 
