@@ -177,13 +177,11 @@ rustc has the concept of the "extern prelude" which is effectively the set of
 crates that can be referred to without an explicit `extern crate` statement.
 Originally this was populated by users writing `extern crate $crate` in their
 code for each direct dependency. Since the 2018 edition, crates passed via
-`--extern` are automatically loaded and added to the extern prelude.
+`--extern` added to the extern prelude. `core` is always added to the extern
+prelude. For crates without `#![no_std]`, `std` is added to the extern prelude.
 
-`std` is automatically loaded and added to the extern prelude. For `#![no_std]`
-crates, `core` is loaded and added to the extern prelude instead. For `std` or
-`core` as appropriate, an additional `use $crate::prelude::rust_20XX::*` is
-injected for common items that Rust does not require users import (e.g.
-`Option`).
+The `core` or `std` prelude is added (depending on the presence of `#![no_std]`)
+in the form of a `use $crate::prelude::rust_20XX::*` statement.
 
 `extern crate` can still be used and will search for the dependency in locations
 where direct dependencies can be found, such as `-L crate=` paths or in the

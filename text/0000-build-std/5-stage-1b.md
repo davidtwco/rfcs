@@ -36,35 +36,28 @@ named `core`, `alloc` or `std` ([?][rationale-no-builtin-other-crates]) on
 stable. Use with any crate name is gated on a perma-unstable `cargo-feature`
 ([?][rationale-unstable-builtin-crates]).
 
+> [!NOTE]
+>
+> Explicit dependencies are passed to rustc with `--extern` and without the
+> `noprelude` modifier and rustc will no longer insert `extern crate`
+> declarations for `core` or `std` when it sees them passed in without the
+> `noprelude` modifier ([?][rationale-explicit-noprelude]). This means users
+> migrating to explicit builtin dependencies may need to migrate code by
+> adjusting any root-relative references (like `::std`) that relied on
+> previously-present `extern crate` statements.
+
 Crates without an explicit dependency on the standard library now have a
 implicit dependency ([?][rationale-no-migration]) on `std`, `alloc` and `core`.
-In the `hello_world` crate below, there are no explicit `builtin` dependencies..
-
-```toml
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-```
-
-..which is equivalent to the following explicit dependencies:
-
-```toml
-[package]
-name = "hello_world"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-std = { builtin = true }
-alloc = { builtin = true }
-core = { builtin = true }
-```
-
 Any explicit `builtin` dependency present in the manifest will disable the
 implicit dependencies.
+
+> [!NOTE]
+>
+> Implicit dependencies are passed to rustc with the `--extern` `noprelude`
+> modifier to ensure backwards compatibility as in [stage1a][stage1a-noprelude].
+> This means that while implicit and explicit dependencies are equivalent during
+> resolution Cargo must maintain a distinction between them that allows the
+> `noprelude` modifier to be correctly passed.
 
 When a `std` dependency is present an additional implicit dependency on the
 `test` crate is added for crates that are being tested with the default test
@@ -653,6 +646,16 @@ hardcode the names of many crates in the sysroot which are inherently unstable.
 
 ↩ [*Proposal*][proposal]
 
+## Why not use `noprelude` for explicit `builtin` dependencies
+[rationale-explicit-noprelude]: #why-not-use-noprelude-for-explicit-builtin-dependencies
+
+Moving away from `noprelude` for explicit dependencies means that they are more
+consistent with other dependencies specified in the `Cargo.toml`. This does make
+them less consistent with implicit dependencies, though the standard library is
+today already inconsistent with explicit dependencies.
+
+↩ [*Proposal*][proposal]
+
 ## Why not require builtin dependencies instead of supporting implicit ones?
 [rationale-no-migration]: #why-not-require-builtin-dependencies-instead-of-supporting-implicit-ones
 
@@ -961,6 +964,7 @@ user can enable `compiler-builtins/c`, they will need to manually configure
 
 [panic-strategies]: ./4-stage-1a.md#panic-strategies
 [compiler-builtins-mem]: ./4-stage-1a.md#compiler-builtinsmem
+[stage1a-noprelude]: ./4-stage-1a.md#why-use-noprelude-with---extern
 
 [cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html
 [cargo-bench]: https://doc.rust-lang.org/cargo/commands/cargo-bench.html

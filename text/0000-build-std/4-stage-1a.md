@@ -212,8 +212,8 @@ top-level dependencies from the sysroot ([?][rationale-root-sysroot-deps]).
 > rustc could add a `--no-implicit-sysroot-deps` flag with this behaviour. For
 > example, writing `extern crate foo` in a crate will not load `foo.rlib` from
 > the sysroot if it is present, but if an `--extern noprelude:bar.rlib` is
-> provided which depends on a crate `foo`, rustc will look in `-L` paths and the
-> sysroot for it.
+> provided which depends on a crate `foo`, rustc will look in
+> `-L dependency=...` paths and the sysroot for it.
 
 All Cargo dependencies are provided to the compiler using the
 `--extern noprelude:` flag ([?][rationale-noprelude-with-extern]), including
@@ -803,17 +803,17 @@ providing an empty path.
 ## Why use `noprelude` with `--extern`?
 [rationale-noprelude-with-extern]: #why-use-noprelude-with---extern
 
-rustc's existing behaviour of implicitly loading `std` and adding it to the
-extern prelude will not be changed as part of this RFC. Adding The `noprelude`
-modifier for `--extern` is necessary for use of the `--extern` flag to be
-equivalent to loading from a sysroot.
+Using `noprelude` allows `build-std` to closer match rustc's behaviour when it
+loads crates from the sysroot. Without `noprelude`, rustc adds `--extern` crates
+to the extern prelude. As a consequence, if a newly-built `alloc` were passed
+using `--extern alloc=alloc.rlib` then `extern crate alloc` would not be
+required to use the locally-built `alloc`, but it would be to use the pre-built
+`alloc`. This difference in how a crate is made available to rustc should not be
+observable to the user as they have not opted into the migration.
 
-Without `noprelude`, rustc adds crates to the extern prelude when passed in with
-`--extern`. As a consequence, if a newly-built `alloc` were passed using
-`--extern alloc=alloc.rlib` then `extern crate alloc` would not be required to
-use the locally-built `alloc`, but it would be to use the pre-built `alloc`.
-This difference in how a crate is made available to rustc should not be
-observable to the user.
+Passing crates without `noprelude` with the existing prelude behaviour has also
+been a source of [bugs][wg-cargo-std-aware-40] in previous `-Zbuild-std`
+implementations.
 
 ↩ [*Preventing implicit sysroot dependencies*][preventing-implicit-sysroot-dependencies]
 
@@ -1106,3 +1106,4 @@ build-std could build both the `dylib` and `rlib` of the standard library.
 [cargo-vendor]: https://doc.rust-lang.org/cargo/commands/cargo-vendor.html
 [cargo-version]: https://doc.rust-lang.org/cargo/commands/cargo-version.html
 [cargo-yank]: https://doc.rust-lang.org/cargo/commands/cargo-yank.html
+[wg-cargo-std-aware#40]: https://github.com/rust-lang/wg-cargo-std-aware/issues/40
