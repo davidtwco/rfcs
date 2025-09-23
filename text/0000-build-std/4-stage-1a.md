@@ -157,7 +157,8 @@ target in the project.
 Behaviour of crates using `#![no_std]` will not change whether or not `std` is
 rebuilt and passed via `--extern` to rustc, and `#![no_std]` will still be
 required in order for `rustc` to not attempt to load `std` and add it to the
-extern prelude.
+extern prelude. [Stage 1b][stage1b] proposes a mechanism that supercedes
+`#![no_std]`.
 
 *See the following sections for rationale/alternatives:*
 

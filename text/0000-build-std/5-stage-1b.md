@@ -139,7 +139,7 @@ files ([?][rationale-cargo-lock]).
 
 *See the following sections for future possibilities:*
 
-- [*Warn when `no_std` crates accidentally have a dependency on `std`*][future-no_std-warning]
+- [*Deprecating `#![no_std]`*][future-deprecating-nostd]
 - [*Allow `builtin` source replacement*][future-source-replacement]
 - [*Remove `rustc_dep_of_std`*][future-rustc_dep_of_std]
 
@@ -881,14 +881,41 @@ would be desirable.
 
 There are many possible follow-ups to Stage 1b:
 
-## Warn when `no_std` crates accidentally have a transitive dependency on `std`
-[future-no_std-warning]: #warn-when-no_std-crates-accidentally-have-a-transitive-dependency-on-std
+## Deprecating `#![no_std]`
+[future-deprecating-nostd]: #deprecating-no_std
 
-Cargo could emit a warning or lint when a root crate without an explicit
-dependency on `std` or `alloc` has a dependency on `std` or `alloc` via a
-dependency. When writing a `no_std` crate, then it is desirable to avoid any
-unexpected dependency on standard library crates and this would cause the crate
-to fail to compile on targets where those crates are not supported.
+The `#![no_std]` attribute does 4 things:
+
+1. Change the `extern crate std/core` declaration injected in the crate root
+2. Decides whether `std` is added to the extern prelude
+3. Chooses the standard library prelude to be used
+4. Ensures rustc throws an error if a crate without `#![no_std]` is depended on.
+
+Points 1 and 2 are not an issue as explicit builtins will not have
+`extern crate` declarations inserted and are added to the extern prelude when
+passed with `--extern` without the `noprelude` modifier.
+
+For 3, a new rustc flag, say `--extern-stdlib`, could be added which changes
+rustc to use the standard library crates present as `--extern` to decide which
+prelude to import. The `#![no_std]` attribute would have to remain in order to
+avoid raising the `rust-version` of the crate. It's behaviour if present would
+be to prevent the use of the `std` prelude as this reduces the chance of a user
+accidentally breaking older versions of the toolchain that do not use builtin
+dependencies.
+
+For 4, Cargo could emit a warning or lint when a root crate without an explicit
+dependency on `std` has a dependency on it via a dependency. When writing a
+`no_std` crate, then it is desirable to avoid any unexpected dependency on
+standard library crates and this would cause the crate to fail to compile on
+targets where those crates are not supported.
+
+Once these points are in place Rust could then make `#![no_std]` deprecated on
+a new edition.
+
+Cargo could also add a perma-unstable `no-implicit-builtins` feature to allow
+users to have 0 builtin dependencies, which will allow `#![no_core]` users to
+avoid unnecessary `core` dependencies. `#![no_core]` should still be required in
+the user's crate in order to ensure that they are on an unstable toolchain.
 
 ↩ [*Proposal*][proposal]
 
