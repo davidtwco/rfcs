@@ -1,0 +1,214 @@
+- Feature Name: `build-std-match-profile`
+- Start Date: 2025-06-05
+- RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
+- Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
+
+<!-- This RFC will be submitted separately from build-std RFC after the it is accepted -->
+
+# Summary
+[summary]: #summary
+
+This RFC proposes extending the `build-std` option with new values which
+automatically rebuild the standard library to match the user's current profile.
+
+# Motivation
+[motivation]: #motivation
+
+This RFC aimed at allowing users to rebuild the standard library with different
+codegen flags or profile as per the
+[motivations described in the build-std RFC](./0000-build-std/3-motivation.md).
+
+# Explanation
+[explanation]: #explanation
+
+Cargo will also permit `build-std` to be set as part of the `[profile]` section
+([?][rationale-profile]). `build-std` configuration locations precedence is
+updated as follows ([?][rationale-profile-precedence]):
+
+1. `[target.<triple>]`
+2. `[target.<cfg>]`
+3. `[profile]`
+4. `[build]`
+
+The `build-std` option in the Cargo configuration will be extended with two new
+values - "compatible-profile" or "match-profile":
+
+```toml
+[build]
+build-std = "match-profile" # or `compatible-profile`/`compatible`/`always`/`never`
+```
+
+"match-profile" will become the default value for the release profile
+([?][rationale-default], [?][rationale-why-not-always-rebuild]). The `bench`
+profile inherits this default from `release`.
+
+Like `build-std = "compatible"`, when set to either "compatible-profile" or
+"match-profile", then the standard library crates will be rebuilt
+automatically when a pre-built standard library is not present.
+
+- "compatible-profile" rebuilds the standard library if the user is using a
+  different profile than the default "release" profile of the pre-built standard
+  library or a rebuild is necessary to maintain compatibility with the user's
+  crate ([?][rationale-compatible-profile]).
+
+  Cargo will build the standard library using the same profile as the user, as
+  defined in the standard library workspace
+  ([?][rationale-compatible-profile-std]). It will vary only in the target modifiers
+  necessary to maintain compatibility with the user's crates.
+
+  Pre-built available? | User's profile | Target modifiers changed? | Standard library re-built?
+  -------------------- | -------------- | ------------------------- | --------------------------
+  No                   | `dev`          | N/A                       | Yes, std's `dev`
+  No                   | `release`      | N/A                       | Yes, std's `release`
+  Yes                  | `dev`          | N/A                       | Yes, std's `dev`
+  Yes                  | `release`      | Unchanged                 | No
+  Yes                  | `release`      | Changed                   | Yes, std's `release`
+
+- "match-profile" rebuilds the standard library using the configuration of the
+  user's current profile ([?][rationale-match-profile]). Cargo will check
+  whether the compilation flags it would intend to use for the standard library
+  match those used with the pre-built standard library by asking rustc.
+
+  Pre-built available? | User's profile | Target modifiers changed? | Standard library re-built?
+  -------------------- | -------------- | ------------------------- | --------------------------
+  No                   | `dev`          | N/A                       | Yes, user's `dev`
+  No                   | `release`      | N/A                       | Yes, user's `release`
+  Yes                  | `dev`          | N/A                       | Yes, user's `dev`
+  Yes                  | `release`      | Unchanged                 | Yes, user's `release`
+  Yes                  | `release`      | Changed                   | Yes, user's `release`
+
+  > [!NOTE]
+  >
+  > rustc's compatibility checking from
+  > [`build-std = "compatible"`][compatible] will be extended to allow checking
+  > for any mismatch in relevant compilation flags (e.g. excluding things like
+  > dependency rlib search paths which will necessarily differ). rustc will not
+  > be able to serialise the value of each flag into rlib metadata due to
+  > performance overhead but will be able to serialise and compare a hash of
+  > these values.
+
+The above examples apply to any other profile too, such as `bench` or `test`.
+When custom profiles are used, the standard library will be built in the profile
+that the custom profile ultimately inherited from (via `inherited-from`). These
+options are primarily useful for users wanting to use the same codegen flags
+with the standard library or have a more debuggable standard library.
+
+As with the "always" option, the exact crates from the standard library to be
+built are determined by the `build-std-crate` option or explicit dependencies on
+the standard library if [*Standard library dependencies*][deps] were implemented.
+
+# Rationale and alternatives
+[rationale-and-alternatives]: #rationale-and-alternatives
+
+This section aims to justify all of the decisions made in the proposed design
+from [*Explanation*][explanation] and discuss why alternatives were not chosen.
+
+## Why permit `build-std` in `[profile]`?
+[rationale-profile]: #why-permit-build-std-in-profile
+
+Configurations like "match-profile" for `build-std` make most sense when
+combined with Cargo profiles that aim to maximise the optimisation of the final
+binary. It is more likely that users would want to use "match-profile" with the
+release profile than by default (as in `[build]`) or for a specific target (as
+in `[target]`).
+
+However, permitting `build-std` in `[profile]` when in Cargo configurations, but
+not in Cargo manifests, is inconsistent with other options that exist in
+profiles.
+
+↩ [*Explanation*][explanation]
+
+## Why does `[profile]` have higher precedence than `[build]` and lower than `[target]`?
+[rationale-profile-precedence]: #why-does-profile-have-higher-precedence-than-build-and-lower-than-target
+
+`[target]` configuration is more narrowly scoped than `[profile]` which is in
+turn more narrowly scoped than the global default in `[build]`. There is no
+existing precedent in Cargo for these sections having the precedence currently
+proposed.
+
+↩ [*Explanation*][explanation]
+
+## Why have "match-profile" as the default for the release profile?
+[rationale-default]: #why-have-match-profile-as-the-default-for-the-release-profile
+
+`build-std = "match-profile"` is intended to be used when additional time
+spent building the standard library is not a problem and the quality of the
+final artifact is paramount. This corresponds closely with the release profile,
+where additional time spent on optimisations (e.g. with `-Ctarget-cpu`) is
+acceptable. Always re-building the standard library with the user's profile
+configuration in release mode is likely to result in a more optimised build than
+with the pre-built standard library and is thus a reasonable default for the
+`release` and `bench` profiles.
+
+↩ [*Explanation*][explanation]
+
+### Why not always default to "match-profile"?
+[rationale-why-not-always-rebuild]: #why-not-always-default-to-match-profile
+
+Cargo's users don't currently expect that changing any part of their profile
+configuration, such as trying a different optimisation level, would trigger a
+rebuild of the standard library. For small projects, rebuilding the standard
+library could be a significant increase in the overall build time for a project.
+
+If `build-std = "match-profile"` were the default, the standard library
+could be rebuilt quite frequently without much benefit. Especially as the
+pre-built standard library is built using the release profile, all debug profile
+builds would immediately trigger a rebuild of the standard library.
+
+↩ [*Explanation*][explanation]
+
+### Why add "compatible-profile"?
+[rationale-compatible-profile]: #why-add-compatible-profile
+
+"compatible-profile" is useful for when users want a more debuggable standard
+library while keeping rebuilds of the standard library to a minimum.
+
+↩ [*Explanation*][explanation]
+
+### Why does "compatible-profile" use the standard library's profiles?
+[rationale-compatible-profile-std]: #why-does-compatible-profile-use-the-standard-librarys-profiles
+
+By using the standard library's profile definitions, the library team will be
+able to define a "dev" profile that is most useful for the standard library.
+
+↩ [*Explanation*][explanation]
+
+### Why add "match-profile"?
+[rationale-match-profile]: #why-add-match-profile
+
+"match-profile" is useful for rebuilding the standard library with the same
+codegen flags as the rest of the user's project, such as using `-Ctarget-cpu` to
+gain additional optimisations.
+
+↩ [*Explanation*][explanation]
+
+# Prior art
+[prior-art]: #prior-art
+
+See the [*Background*][background] and [*History*][history] of the build-std RFC.
+
+# Unresolved questions
+[unresolved-questions]: #unresolved-questions
+
+The following small details are likely to be bikeshed prior to RFC acceptance or
+stabilisation and aren't pertinent to the overall design:
+
+## What should the "match-profile" and "compatible-profile" values of `build-std` be named?
+[unresolved-naming]: #what-should-the-match-profile-and-compatible-profile-values-of-build-std-be-named
+
+It could be named something else.
+
+## Should `build-std` be in `[profile]` if it only makes in the Cargo configuration `[profile]`?
+[unresolved-profile]: #should-build-std-be-in-profile-if-it-only-makes-in-the-cargo-configuration-profile
+
+This could be unintuitive for users.
+
+# Future possibilities
+[future-possibilities]: #future-possibilities
+
+There are not currently any documented follow-ups to this RFC.
+
+[background]: ./0000-build-std/1-background.md
+[history]: ./0000-build-std/2-history.md
+[compatible]: ./0000a-build-std-compatible.md
+[deps]: ./0000-build-std/5-standard-library-dependencies.md
