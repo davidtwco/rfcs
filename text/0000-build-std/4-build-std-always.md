@@ -530,12 +530,9 @@ library crates or their dependencies.
 `std`, `alloc` or `core` be updated, as these are unversioned and always match
 the current toolchain version.
 
-[`cargo vendor`][cargo-vendor] will not vendor standard library dependencies.
-Vendoring these and using them later would effectively pin the crate to the
-version of the language and toolchain used when vendoring was performed (as the
-vendored standard library source would only work with that toolchain version).
-Standard library crates are already vendored in the `rust-src` component, so do
-not require network access once downloaded.
+[`cargo vendor`][cargo-vendor] will not vendor the standard library crates or
+their dependencies. These are pre-vendored as part of the `rust-src` component
+([?][rationale-vendoring]).
 
 The following commands will now build the standard library if required as part
 of the compilation of the project, just like any other dependency:
