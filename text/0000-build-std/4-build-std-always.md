@@ -21,7 +21,7 @@ section ([?][rationale-build-std-in-config]), permitting one of two values -
 
 ```toml
 [build]
-build-std = "always" # or `never`
+build-std = "never" # or `always`
 ```
 
 `build-std` can also be specified in the `[target.<triple>]` and
@@ -29,7 +29,7 @@ build-std = "always" # or `never`
 
 ```toml
 [target.aarch64-unknown-illumos]
-build-std = "always" # or `never`
+build-std = "never" # or `always`
 ```
 
 The `build-std` configuration locations have the following precedence
