@@ -35,8 +35,8 @@ There are many features proposed in this RFC for different parts of the project:
 A stable mechanism for building the standard library imposes some constraints on
 the rest of the toolchain that would need to be upheld:
 
-- No further customisation of the pre-built standard library through any means
-  other than the profile in `Cargo.toml`
+- No further required customisation of the pre-built standard library through
+  any means other than the profile in `Cargo.toml`
 - Avoid mandatory C dependencies on the standard library
   - At the very least, new dependencies on the standard library will impact
     whether the standard library can be successfully built by users with varying
