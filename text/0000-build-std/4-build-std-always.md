@@ -418,17 +418,8 @@ otherwise) will be used.
 
 `compiler-builtins` is always built with `-Ccodegen-units=10000` to force each
 intrinsic into its own object file to avoid symbol clashes with libgcc. This is
-currently enforced with a profile override in the standard library's workspace.
-
-rustc will automatically use a large number of codegen units for the
-`compiler-builtins` crate, unless manually specified using the `-Ccodegen-units`
-flag (to support users, like Rust for Linux, that prefer a single codegen unit).
-This prevents `compiler-builtins` from having to be special-cased in the
-standard library workspace.
-
-> [!NOTE]
->
-> [rust#135395] could be resurrected to implement this.
+currently enforced with a profile override in the standard library's workspace
+and is unchanged.
 
 See [*Allow local builds of `compiler-rt` intrinsics*][future-compiler-builtins-c]
 for discussion of the `compiler-builtins-c` feature.
