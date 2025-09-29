@@ -15,18 +15,19 @@ While the pre-built standard library has been sufficient for the majority of
 Rust users, there are a variety of use-cases which require the ability to
 re-build the standard library.
 
-This RFC aims to support the following use cases:
+This RFC aims to support the following use cases on stable:
 
-1. **Building the standard library on a stable toolchain without Cargo**
+1. **Building the standard library without relying on unstable escape hatches**
 
     - While tangential to the core of build-std as a feature, projects like Rust
-      for Linux want to be able to build an unmodified `core` from `rust-src` in
-      the sysroot on a stable toolchain without Cargo
+      for Linux want to be able to build crates from the standard library using
+      a stable toolchain without relying on escape hatches like
+      `RUSTC_BOOTSTRAP` that the Rust project does not encourage use of
 
         - It is relatively straightforward to support this, hence its inclusion
 
-    - Cargo may also want a mechanism to build the standard library for
-      build-std on a stable toolchain without relying on `RUSTC_BOOTSTRAP`
+        - Cargo's implementation of build-std should be able to re-use whichever
+          mechanism is designed to address this
 
 2. **Building standard library crates that are not shipped for a target**
 

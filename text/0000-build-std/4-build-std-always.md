@@ -8,7 +8,7 @@ which flags to pass and features to enable).
 
 This is aimed at supporting the following [motivations](./3-motivation.md):
 
-- Building the standard library on a stable toolchain without Cargo
+- Building the standard library without relying on unstable escape hatches
 - Building standard library crates that are not shipped for a target
 - Using the standard library with tier three targets
 
