@@ -436,23 +436,29 @@ for discussion of the `compiler-builtins-c` feature.
 ### `compiler-builtins/mem`
 [compiler-builtins-mem]: #compiler-builtinsmem
 
-The `mem` feature of `compiler_builtins` (and the subsequent
-`compiler-builtins-mem` feature of `core`, `alloc`, `std` which forward to
-`compiler_builtins/mem`) will be inverted to a new feature named `external-mem`
-([?][rationale-no-mem]). This will not be a default feature, so
+It is not possible to use weak linkage to make the symbols provided by
+`compiler_builtins/mem` trivially overridable in every case
+([?][rationale-no-weak-linkage]).
+
+The `mem` feature of `compiler_builtins` will be inverted to a new feature named
+`external-mem` ([?][rationale-no-mem]). This will not be a default feature, so
 `compiler_builtins` will provide mem symbols unless the `external-mem` is
 provided.
 
-`std`, which dynamically links to `libc`, will depend on the `external-mem`
-feature. `no_std` users providing their own mem symbols can rely on weak linkage
-to override the ones provided by `compiler_builtins` or provide the
-`external-mem` feature with an unstable feature in scenarios where weak linkage
-is not an option ([?][rationale-no-weak-linkage]).
+`std`, which provides memory symbols via `libc`, will depend on the
+`external-mem` feature. Most `no_std` users will use the `compiler_builtins`
+implementation of these symbols and will work by default when they do not depend
+on `std`.
+
+Those users providing their own mem symbols can override on weak linkage of the
+`compiler_builtins` symbols. or use a nightly toolchain to enable the
+`external-mem` feature of an explicit dependency on the standard library (per
+[*Standard library dependencies*][deps]).
 
 *See the following sections for rationale/alternatives:*
 
-- [*Why invert the `mem` feature?*][rationale-no-mem]
 - [*Why not rely on weak linkage for `compiler-builtins/mem` symbols?*][rationale-no-weak-linkage]
+- [*Why invert the `mem` feature?*][rationale-no-mem]
 
 ## `profiler-builtins`
 [profiler-builtins]: #profiler-builtins
@@ -1012,16 +1018,14 @@ special-case all of these crates.
 ## Why invert the `mem` feature?
 [rationale-no-mem]: #why-invert-the-mem-feature
 
-Currently the `mem` feature is enabled for `no_std` platforms in the
-`compiler_builtins` `build.rs` file. Inverting a Cargo feature might seem like
-an antipattern as "negative" features are discouraged because of how features
-unify (e.g. `std` features are preferred to `no_std`).
+While "negative" features are typically discouraged due to how features unify
+(e.g. `std` features are preferred to `no_std`): the `mem` feature's current
+behaviour is the opposite of what is optimal.
 
-However, the `mem` feature is difficult to use as either `std` or the user may
-want to turn the feature off. Because many different crates in the standard
-library workspace depend on `compiler_builtins` this negative must be forwarded
-to all of them to correctly disable the feature which is quite tricky to do.
-This shows that the `mem` feature is actually the wrong way around.
+Ideally, a crate should be able to provide alternate memory symbols and disable
+`compiler_builtins`' symbols for the entire crate graph by enabling a feature
+(e.g. `std`/`libc` could do this) - this is what an `external-mem` feature
+enables.
 
 ↩ [*`compiler-builtins-mem`*][compiler-builtins-mem]
 
@@ -1030,12 +1034,13 @@ This shows that the `mem` feature is actually the wrong way around.
 
 Since [compiler-builtins#411], the relevant symbols in `compiler_builtins`
 already have weak linkage. However, it is nevertheless not possible to simply
-remove the `mem` feature and have the symbols always be present.
+remove the `mem` feature and have the symbols always be present:
 
-Some targets, such as those based on MinGW, do not have sufficient support for
-weak definitions (at least with the default linker). Furthermore, weak linkage
-has precedence over shared libraries and the symbols of a dynamically-linked
-`libc` should be preferred over `compiler_builtins`'s symbols.
+- Some targets, such as those based on MinGW, do not have sufficient support for
+  weak definitions (at least with the default linker).
+- Weak linkage has precedence over shared libraries and the symbols of a
+  dynamically-linked `libc` should be preferred over `compiler_builtins`'s
+  symbols.
 
 ↩ [*`compiler-builtins-mem`*][compiler-builtins-mem]
 

@@ -112,11 +112,12 @@ implementation. There are still some C dependencies:
   standard library
 - `compiler_builtins` has an optional `mem` feature that provides symbols
   for common memory routines (e.g. `memcpy`)
-  - It is enabled automatically on `no_std` platforms as when `std` is built
-    `libc` provides these routines.
-  - Users often rely on weak linkage to override these symbols when required,
-    but in scenarios where weak linkage is not supported users must directly
-    turn the feature off.
+  - It is enabled automatically on some `no_std` platforms as when `std` is
+    built `libc` provides these routines.
+  - Users can rely on weak linkage to override these symbols, but in scenarios
+    where weak linkage is not supported or where the symbols are to be
+    overridden from a shared library, then users must directly turn the feature
+    off.
 - To use sanitizers, the sanitizer runtimes from LLVM's compiler-rt need to
   be linked against. Building of these is enabled in `bootstrap.toml`
   ([`build.sanitizers`][bootstrap-sanitizers]) and they are
