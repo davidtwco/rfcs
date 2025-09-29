@@ -76,7 +76,8 @@ If [*Standard library dependencies*][deps] are implemented then `builtin`
 dependencies will be used if `build-std-crates` is not explicitly set.
 Otherwise, `build-std-crate` will default to the crate intended to be supported
 by the target (see later
-[*Target standard library support*][target-standard-library-support] section).
+[*Default standard library crate for targets*][default-std-crate-for-target]
+section).
 
 If `std` is to be built and Cargo is building a test using the default test
 harness then Cargo will also build the `test` crate.
@@ -165,10 +166,10 @@ target in the project.
 
 - [*Allow reusing sysroot artifacts if available*][future-reuse-sysroot]
 
-## Target standard library support
-[target-standard-library-support]: #target-standard-library-support
+## Default standard library crate for targets
+[default-std-crate-for-target]: #default-standard-library-crate-for-targets
 
-A new `standard_library_support` field is added to the target specification
+A new `default_build_std_crate` field is added to the target specification
 ([?][rationale-target-spec-purpose]), replacing the existing `metadata.std`
 field.
 
@@ -176,24 +177,24 @@ This field determines whether the corresponding crate is intended to be able to
 be built for that target. It will be set to one of three values, as appropriate
 for the target: "core", "core and alloc" or "core, alloc and std".
 
-For example, `standard_library_support` will be set to "core, alloc and std" on
+For example, `default_build_std_crate` will be set to "core, alloc and std" on
 "aarch64-unknown-linux-gnu", as all of the standard library crates are supported
 on this target, and only "core" on "aarch64-unknown-none", as this is the only
 standard library crate that is supported on this target.
 
 Cargo's `build-std-crate` field will default to the value of the
-`standard_library_support` field (`std` for "core, alloc and std", `alloc` for
+`default_build_std_crate` field (`std` for "core, alloc and std", `alloc` for
 "core and alloc", and `core` for "core"). This does not prevent users from
 building more crates than the default, it is only intended to be a sensible
 default for the target that is probably what the user expects.
 
-The `target-standard-library-support` option will be supported by rustc's
+The `target-default-build-std-crate` option will be supported by rustc's
 `--print` flag and will be used by Cargo to query this value for a given target:
 
 ```shell-session
-$ rustc --print target-standard-library-support --target aarch64-unknown-linux-gnu
+$ rustc --print target-default-build-std-crate --target aarch64-unknown-linux-gnu
 std
-$ rustc --print target-standard-library-support --target aarch64-unknown-none
+$ rustc --print target-default-build-std-crate --target aarch64-unknown-none
 core
 ```
 
@@ -830,7 +831,7 @@ there is no reason why the target specification could not be primarily
 maintained by the compiler team but in close coordination with library and other
 relevant teams.
 
-↩ [*Target standard library support*][target-standard-library-support]
+↩ [*Default standard library crate for targets*][default-std-crate-for-target]
 
 ## Why remove `restricted_std`?
 [rationale-remove-restricted-std]: #why-remove-restricted_std
