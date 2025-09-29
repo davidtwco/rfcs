@@ -476,9 +476,9 @@ part of the standard library build.
 ## Caching
 [caching]: #caching
 
-Standard library artifacts built by build-std will not be shared between crates
-or workspaces, as they only exist in Cargo's target directory for a specific
-crate or workspace ([?][rationale-caching]).
+Standard library artifacts built by build-std will be reused equivalently to
+today's crates/dependencies that are built within a shared target directory. By
+default, this limits sharing to a single workspace ([?][rationale-caching]).
 
 *See the following sections for rationale/alternatives:*
 
