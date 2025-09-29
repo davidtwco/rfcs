@@ -72,15 +72,15 @@ A value of "std" means that every crate in the graph has a direct dependency on
 `std`, `alloc` and `core`. Similarly, "alloc" means `alloc` and `core`, and
 "core" means just `core`.
 
+If `std` is to be built and Cargo is building a test or benchmark using the
+default test harness then Cargo will also build the `test` crate.
+
 If [*Standard library dependencies*][deps] are implemented then `builtin`
 dependencies will be used if `build-std-crates` is not explicitly set.
 Otherwise, `build-std-crate` will default to the crate intended to be supported
 by the target (see later
 [*Default standard library crate for targets*][default-std-crate-for-target]
 section).
-
-If `std` is to be built and Cargo is building a test using the default test
-harness then Cargo will also build the `test` crate.
 
 > [!NOTE]
 >
