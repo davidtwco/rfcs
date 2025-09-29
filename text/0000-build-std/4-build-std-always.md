@@ -603,6 +603,12 @@ Additionally, there are no guarantees that the build environment required for
 the standard library will not change over time (e.g. new minimum versions of
 system packages or C toolchains, etc).
 
+Building the standard library crates in the sysroot without requiring
+`RUSTC_BOOTSTRAP` is intended for enabling the standard library to be built with
+a stable toolchain and stable compiler flags, despite that the standard library
+uses unstable features in its source code, not as a general mechanism for
+bypassing Rust's stability mechanisms.
+
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
