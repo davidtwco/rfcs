@@ -212,7 +212,7 @@ a function annotated with `#[panic_handler]`. There can only be one
 (e.g. arithmetic overflow or out-of-bounds access) and the `core::panic!` macro
 immediately delegates to the panic handler crate.
 
-`std` is also a panic handler. `std`'s panic handler function and its
+`std` defines a panic handler. `std`'s panic handler function and its
 `std::panic!` macro print panic information to stderr and delegate to a
 *panic runtime* to decide what to do next, determined by the *panic strategy*.
 

@@ -381,7 +381,7 @@ expected locations, typically populated by the `rust-std` components. Its
 behaviour can be forced by `-Clink-self-contained=true`, but is force-enabled
 for some targets and inferred for others.
 
-Rust can start to ship `rust-self-contained` components for any targets which
+Rust will ship `rust-self-contained` components for any targets which
 need it. These components will contain the special object files normally
 included in `rust-std`, and will be distributed for all tiers of targets. While
 generally these objects are specific to the architecture and C runtime (CRT)
@@ -586,9 +586,9 @@ function correctly or build at all. Even on a tier one target, the Rust project
 cannot test every possible variation of the standard library that build-std
 enables.
 
-The tier of a target no longer determines whether the availability of the
-standard library, but rather the level of support provided for the standard
-library on the target.
+The tier of a target no longer determines the possibility of using the standard
+library, but rather the level of support provided for the standard library on
+the target.
 
 Cargo and Rust project documentation will clearly document the configurations
 which are tested upstream and are guaranteed to work. Any other configurations
