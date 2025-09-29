@@ -720,7 +720,8 @@ library, which has proven itself suitable for a majority of use cases.
 By minimising the differences between a newly-built std and a pre-built std,
 there is less chance of the user experiencing bugs or unexpected behaviour from
 the well-tested and supported pre-built std. Later proposals will extend the
-`build-std` option with customised standard library builds.
+`build-std` option with customised standard library builds that use the user's
+profile.
 
 ↩ [*Proposal*][proposal]
 
