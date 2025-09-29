@@ -2,7 +2,9 @@
 
 This part of the RFC proposes adding a `build-std = "always|never"` option to
 the Cargo configuration which will unconditionally rebuild the standard library
-crates listed in a new `build-std-crates` option.
+crates listed in a new `build-std-crates` option. It also describes how Cargo
+(or external tools) should build the standard library crates on stable (i.e.,
+which flags to pass and features to enable).
 
 This is aimed at supporting the following [motivations](./3-motivation.md):
 
