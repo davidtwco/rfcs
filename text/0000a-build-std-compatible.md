@@ -47,18 +47,8 @@ target modifier will trigger a rebuild of the standard library.
 > `rlib` artefact is compatible with the flags passed to rustc
 > ([?][rationale-rustc-support]).
 >
-> ```shell-session
-> $ rustc -Zreg-struct-return core/lib.rs -o libcore.rlib
-> $ rustc --emit compatibility $cargo_flags libcore.rlib
-> error: mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `core`
-> ```
->
-> In the above example, rustc compiles libcore with the `-Zreg-struct-return`
-> target modifier to create an `rlib`, and then is invoked to check the
-> compatibility of the flags Cargo would have passed to the crate against those
-> used with `libcore.rlib`. In this instance, the `rlib` was compiled with
-> `-Zreg-struct-return` and this example assumes that `$cargo_flags` does not
-> pass this flag, so rustc reports a mismatch.
+> The exact mechanism is not specified in this RFC. It may be a flag such as
+> `--compatibility-with=core` or an `--emit` or `--print` flag.
 >
 > Cargo can use this mechanism to determine whether it needs to rebuild the
 > standard library to ensure compatibility. Cargo will only need to run rustc
