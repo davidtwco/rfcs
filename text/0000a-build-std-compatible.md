@@ -90,10 +90,10 @@ As with the "always" option, the exact crates from the standard library to be
 built are determined by the `build-std-crate` option or explicit dependencies on
 the standard library if [*Standard library dependencies*][deps] are implemented.
 
-Multi-target projects (resulting from the "target" field in artifact
-dependencies or the use of `per-pkg-target` fields) results in the decision to
-rebuild the standard library being made multiple times - once for each target in
-the project.
+Multi-target projects (resulting from multiple `--target` flags, the "target"
+field in artifact dependencies or the use of `per-pkg-target` fields) results in
+the decision to rebuild the standard library being made multiple times - once
+for each target in the project.
 
 As Cargo does not have per-target profiles nor a way to change the standard
 library's profile on a per-target basis, the only way to configure the standard
