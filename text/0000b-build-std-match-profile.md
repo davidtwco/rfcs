@@ -94,7 +94,7 @@ options are primarily useful for users wanting to use the same codegen flags
 with the standard library or have a more debuggable standard library.
 
 As with the "always" option, the exact crates from the standard library to be
-built are determined by the `build-std-crate` option or explicit dependencies on
+built are determined by the `build-std-crates` option or explicit dependencies on
 the standard library if [*Standard library dependencies*][deps] were implemented.
 
 # Rationale and alternatives

@@ -58,14 +58,14 @@ respect the `RUSTFLAGS` environment variable.
 > artifacts produced by build-std match the pre-built standard library as much
 > as is feasible.
 
-Alongside `build-std`, a `build-std-crate` key will be introduced
+Alongside `build-std`, a `build-std-crates` key will be introduced
 ([?][rationale-build-std-crate]), which can be used to specify which crates from
 the standard library should be built. Only "core", "alloc" and "std" are valid
-values for `build-std-crate`.
+values for `build-std-crates`.
 
 ```toml
 [build]
-build-std-crate = "std"
+build-std-crates = "std"
 ```
 
 A value of "std" means that every crate in the graph has a direct dependency on
@@ -77,7 +77,7 @@ default test harness then Cargo will also build the `test` crate.
 
 If [*Standard library dependencies*][deps] are implemented then `builtin`
 dependencies will be used if `build-std-crates` is not explicitly set.
-Otherwise, `build-std-crate` will default to the crate intended to be supported
+Otherwise, `build-std-crates` will default to the crate intended to be supported
 by the target (see later
 [*Default standard library crate for targets*][default-std-crate-for-target]
 section).
@@ -147,7 +147,7 @@ target in the project.
 - [*Why does `[target]` take precedence over `[build]` for `build-std`?*][rationale-build-std-precedence]
 - [*Why does "always" rebuild unconditionally?*][rationale-unconditional]
 - [*Why does "always" rebuild in release profile?*][rationale-release-profile]
-- [*Why add `build-std-crate`?*][rationale-build-std-crate]
+- [*Why add `build-std-crates`?*][rationale-build-std-crate]
 - [*Why use the lockfile of the `rust-src` component?*][rationale-lockfile]
 - [*Why not build the standard library in incremental?*][rationale-incremental]
 - [*Why not produce a `dylib` for the standard library?*][rationale-no-dylib]
@@ -159,7 +159,7 @@ target in the project.
 
 - [*What should the `build-std` configuration in `.cargo/config` be named?*][unresolved-config-name]
 - [*What should the "always" and "never" values of `build-std` be named?*][unresolved-config-values]
-- [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
+- [*What should `build-std-crates` be named?*][unresolved-build-std-crate-name]
 - [*Should the standard library inherit RUSTFLAGS?*][unresolved-inherit-rustflags]
 
 *See the following sections for future possibilities:*
@@ -182,7 +182,7 @@ For example, `default_build_std_crate` will be set to "core, alloc and std" on
 on this target, and only "core" on "aarch64-unknown-none", as this is the only
 standard library crate that is supported on this target.
 
-Cargo's `build-std-crate` field will default to the value of the
+Cargo's `build-std-crates` field will default to the value of the
 `default_build_std_crate` field (`std` for "core, alloc and std", `alloc` for
 "core and alloc", and `core` for "core"). This does not prevent users from
 building more crates than the default, it is only intended to be a sensible
@@ -719,15 +719,15 @@ profile.
 
 ↩ [*Proposal*][proposal]
 
-## Why add `build-std-crate`?
-[rationale-build-std-crate]: #why-add-build-std-crate
+## Why add `build-std-crates`?
+[rationale-build-std-crate]: #why-add-build-std-crates
 
 Not all standard library crates will build on all targets. In a `no_std` project
-for a tier three target, `build-std-crate` gives the user the ability to limit
+for a tier three target, `build-std-crates` gives the user the ability to limit
 which crates are built to those they know they need and will build successfully.
 
 *See [Standard library dependencies*][deps] for an alternative to
-`build-std-crate`.*
+`build-std-crates`.*
 
 ↩ [*Proposal*][proposal]
 
@@ -1083,8 +1083,8 @@ What is the most intuitive name for the values of the `build-std` setting?
 
 ↩ [*Proposal*][proposal]
 
-## What should `build-std-crate` be named?
-[unresolved-build-std-crate-name]: #what-should-build-std-crate-be-named
+## What should `build-std-crates` be named?
+[unresolved-build-std-crate-name]: #what-should-build-std-crates-be-named
 
 What should this configuration option be named?
 

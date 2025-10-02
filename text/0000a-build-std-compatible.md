@@ -77,7 +77,7 @@ Yes                  | `release`      | Changed                   | Yes, std's `
 > table for "target modifiers changed, profile unchanged".
 
 As with the "always" option, the exact crates from the standard library to be
-built are determined by the `build-std-crate` option or explicit dependencies on
+built are determined by the `build-std-crates` option or explicit dependencies on
 the standard library if [*Standard library dependencies*][deps] are implemented.
 
 Multi-target projects (resulting from multiple `--target` flags, the "target"
@@ -121,7 +121,7 @@ immediately face a compilation error and need to go learn about
 Rebuilds of the standard library happening transparently reduce the requirement
 that users learn about build-std as something to enable and configure. Combined
 with explicit dependencies on the standard library crates from
-[*Standard library dependencies*][deps] or `build-std-crate` from
+[*Standard library dependencies*][deps] or `build-std-crates` from
 [`build-std="always"`][always], build-std can avoid any cost on users that do
 not require it (by triggering automatically when a target modifier is changed,
 and having no unnecessary rebuilds otherwise).

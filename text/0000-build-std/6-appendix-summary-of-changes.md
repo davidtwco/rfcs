@@ -72,7 +72,7 @@ The following are all of the unresolved questions from all stages of the RFC:
 
 - [*What should the `build-std` configuration in `.cargo/config` be named?*][unresolved-config-name]
 - [*What should the "always" and "never" values of `build-std` be named?*][unresolved-config-values]
-- [*What should `build-std-crate` be named?*][unresolved-build-std-crate-name]
+- [*What should `build-std-crates` be named?*][unresolved-build-std-crate-name]
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
@@ -88,7 +88,7 @@ The following are all of the future possibilities from all stages of the RFC:
 [future-custom-targets]: ./4-build-std-always.md#allow-custom-targets-with-build-std
 [future-panic_unwind]: ./4-build-std-always.md#avoid-building-panic_unwind-unnecessarily
 [future-recompile-special]: ./4-build-std-always.md#enable-local-recompilation-of-special-object-filessanitizer-runtimes
-[unresolved-build-std-crate-name]: ./4-build-std-always.md#what-should-build-std-crate-be-named
+[unresolved-build-std-crate-name]: ./4-build-std-always.md#what-should-build-std-crates-be-named
 [unresolved-config-name]: ./4-build-std-always.md#what-should-the-build-std-configuration-in-cargoconfig-be-named
 [unresolved-config-values]: ./4-build-std-always.md#what-should-the-always-and-never-values-of-build-std-be-named
 
