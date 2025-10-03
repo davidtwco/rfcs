@@ -177,6 +177,7 @@ files ([?][rationale-cargo-lock]).
 
 *See the following sections for future possibilities:*
 
+- [*Allow unstable crate names to be referenced behind cfgs without requiring nightly*][future-cfg-unstable-crate-name]
 - [*Allow `builtin` source replacement*][future-source-replacement]
 - [*Remove `rustc_dep_of_std`*][future-rustc_dep_of_std]
 
@@ -930,6 +931,17 @@ would be desirable.
 [future-possibilities]: #future-possibilities
 
 There are many possible follow-ups to this part of the RFC:
+
+## Allow unstable crate names to be referenced behind cfgs without requiring nightly
+[future-cfg-unstable-crate-name]: #allow-unstable-crate-names-to-be-referenced-behind-cfgs-without-requiring-nightly
+
+It is possible to allow builtin dependencies on unstable crate names to exist
+behind cfgs and for the crate to be compiled on a stable toolchain as long as
+the cfgs are not active. This is a trade-off - it adds a large constraint on
+when Cargo can validate the set of crate names, but would enable users to avoid
+using nightly or doing MSRV bumps.
+
+↩ [*Proposal*][proposal]
 
 ## Allow `builtin` source replacement
 [future-source-replacement]: #allow-builtin-source-replacement
