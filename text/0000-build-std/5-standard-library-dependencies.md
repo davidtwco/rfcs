@@ -691,8 +691,12 @@ hardcode the names of many crates in the sysroot which are inherently unstable.
 Explicit builtin dependencies without the `noprelude` modifier behave more
 consistently with other dependencies specified in the Cargo manifest.
 
-This is a trade-off, as the behaviour will be subtly different than with
-implicit builtin dependencies (where `extern crate` is required).
+This is a trade-off, trading consistency of user experience with special-casing
+in Cargo. Cargo would have to handle implicit vs explicit dependencies
+differently. An explicit dependency on the standard library will behave
+similarly to other dependencies in their manifest, but the behaviour will be
+subtly different than with implicit builtin dependencies (where `extern crate`
+is required).
 
 ↩ [*Proposal*][proposal]
 
