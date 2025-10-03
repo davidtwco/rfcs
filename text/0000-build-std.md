@@ -296,6 +296,15 @@ unpacks - it becoming a part of the build system is not trivial, especially
 considering it uses a different versioning system to Cargo, Rust and the
 standard library.
 
+# Drawbacks
+[drawbacks]: #drawbacks
+
+There are some drawbacks to build-std:
+
+- build-std overlaps with the initial designs and ideas for opaque dependencies
+  in Cargo, thereby introducing a risk of constraining or conflicting with the
+  eventual complete design for opaque dependencies
+
 [davidtwco]: https://github.com/davidtwco
 [adamgemmell]: https://github.com/adamgemmell
 [amanieu]: https://github.com/Amanieu
