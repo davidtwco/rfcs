@@ -37,7 +37,7 @@ any other dependency source for a given dependency
 ([?][rationale-no-builtin-other-crates]) on stable. This set could be expanded
 with new crates in future.
 
-Use with any crate name is gated on a perma-unstable `cargo-feature`
+Use with any other crate name is gated on a perma-unstable `cargo-feature`
 ([?][rationale-unstable-builtin-crates]). If a builtin dependency on a unstable
 crate name exists but is not used due to cfgs, then the crate could still be
 compiled with a stable toolchain.
