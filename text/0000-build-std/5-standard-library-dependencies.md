@@ -51,8 +51,8 @@ Cargo feature.
 
 Crates without an explicit dependency on the standard library now have a
 implicit dependency ([?][rationale-no-migration]) on `std`, `alloc` and `core`.
-Any explicit `builtin` dependency present in the manifest will disable the
-implicit dependencies.
+Any explicit `builtin` dependency present in any dependency table will disable
+the implicit dependencies.
 
 > [!NOTE]
 >
@@ -308,12 +308,12 @@ std = { builtin = true, public = true }
 ## `dev-dependencies` and `build-dependencies`
 [dev-dependencies-and-build-dependencies]: #dev-dependencies-and-build-dependencies
 
-Implicit and explicit dependencies on the standard library are supported for
-`dev-dependencies` in the same way as regular `dependencies`. `dev-dependencies`
-continues to be a superset of `dependencies`, including with `builtin`
-dependencies. It is possible for `dev-dependencies` to have additional `builtin`
-dependencies that the `dependencies` section does not have (e.g. requiring `std`
-when the regular dependencies only require `core`).
+Explicit dependencies on the standard library can be specified in
+`dev-dependencies` in the same way as regular `dependencies`. Any explicit
+`builtin` dependency present in `dev-dependencies` table will disable the
+implicit dependencies. It is possible for `dev-dependencies` to have additional
+`builtin` dependencies that the `dependencies` section does not have (e.g.
+requiring `std` when the regular dependencies only require `core`).
 
 Build scripts and proc macros continue to use the prebuilt standard library as
 in [`build-std=always`][always], and so explicit dependencies on the standard
