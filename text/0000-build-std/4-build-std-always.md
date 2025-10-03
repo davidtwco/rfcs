@@ -1219,9 +1219,10 @@ What should this configuration option be named? `build-std`?
 What is the most intuitive name for the values of the `build-std` setting?
 `always`? `manual`? `unconditional`?
 
-`always` is an imperfect name as it implies the standard library will be
-re-built every time, when it actually just avoids use of the pre-built standard
-library and caches the newly-built standard library.
+`always` combined with the configuration option being named `build-std` -
+`build-std = "always"` - is imperfect as it reads as if the standard library
+will be re-built every time, when it actually just avoids use of the pre-built
+standard library and caches the newly-built standard library.
 
 ↩ [*Proposal*][proposal]
 
