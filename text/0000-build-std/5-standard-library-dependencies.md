@@ -301,6 +301,10 @@ edition = "2024"
 std = { builtin = true, public = true }
 ```
 
+*See the following sections for relevant unresolved questions:*
+
+- [*Should standard library dependencies default to public?*][unresolved-std-default-public]
+
 *See the following sections for rationale/alternatives:*
 
 - [*Why default to public for standard library dependencies?*][rationale-default-public]
@@ -890,6 +894,21 @@ should it stay only as a URL+scheme?
 be needlessly different to existing packages.
 
 ↩ [*Patches*][patches]
+
+## Should standard library dependencies default to public?
+[unresolved-std-default-public]: #should-standard-library-dependencies-default-to-public
+
+Standard library dependencies defaulting to public is a trade-off between
+special-casing in Cargo and requiring that any user with a dependency on the
+standard library who re-exports from the standard library manually declare their
+dependency as public.
+
+It is also inconsistent with
+[*Why not use `noprelude` for explicit `builtin` dependencies?*][rationale-explicit-noprelude]
+which aims to make builtin dependencies consistent with other dependencies in
+the manifest.
+
+↩ [*Public and private dependencies*][public-and-private-dependencies]
 
 ## Should we support `build-dependencies`?
 [unresolved-build-deps]: #should-we-support-build-dependencies
