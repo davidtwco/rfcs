@@ -503,10 +503,9 @@ std = { builtin = true } # <-- this would be removed
 ```
 
 [`cargo tree`][cargo-tree] will show `std`, `alloc` and `core` at appropriate
-places in the tree of dependencies. `alloc` will always be shown as a dependency
-of `std`, and `core` a dependency of `alloc`. As opaque dependencies, none of
-the other dependencies of `std`, `alloc` or `core` will be shown. Neither `std`,
-`alloc` or `core` will have a version number.
+places in the tree of dependencies. As opaque dependencies, none of the other
+dependencies of `std`, `alloc` or `core` will be shown. Neither `std`, `alloc`
+or `core` will have a version number.
 
 > [!NOTE]
 >
