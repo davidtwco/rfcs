@@ -166,40 +166,59 @@ target in the project.
 
 - [*Allow reusing sysroot artifacts if available*][future-reuse-sysroot]
 
-## Default standard library crate for targets
-[default-std-crate-for-target]: #default-standard-library-crate-for-targets
+## Standard library crate stability
+[standard-library-crate-stability]: #standard-library-crate-stability
 
-A new `default_build_std_crate` field is added to the target specification
-([?][rationale-target-spec-purpose]), replacing the existing `metadata.std`
-field.
+An optional `standard_library_support` field
+([?][rationale-why-standard-library-support]) is added to the target
+specification ([?][rationale-target-spec-purpose]), replacing the existing
+`metadata.std` field. `standard_library_support` has two fields:
 
-This field determines whether the corresponding crate is intended to be able to
-be built for that target. It will be set to one of three values, as appropriate
-for the target: "core", "core and alloc" or "core, alloc and std".
+- `supported`, which can be set to either "core", "core and alloc", or
+  "core, alloc and std"
+- `default`, which can be set to either "core", "core and alloc", or
+  "core, alloc and std"
+  - `default` cannot be set to a value which is "less than" that of `supported`
+    (i.e. "core and alloc" when `supported` was only set to "core")
 
-For example, `default_build_std_crate` will be set to "core, alloc and std" on
-"aarch64-unknown-linux-gnu", as all of the standard library crates are supported
-on this target, and only "core" on "aarch64-unknown-none", as this is the only
-standard library crate that is supported on this target.
+The `supported` field determines which standard library crates Cargo will permit
+to be built for this target on a stable toolchain. On a nightly toolchain, Cargo
+will build whichever standard library crates are requested by the user.
+
+The `default` field determines which crate will be built by Cargo if
+`build-std = "always"` and `build-std-crates` is not set. Users can specify
+`build-std-crates` to build more crates than included in the `default`, as long
+as those crates are included in `supported`.
+
+The correct value for `standard_library_support` is independent of the tier of
+the target and depends on the set of crates that are intended to work for a
+given target, according to its maintainers.
+
+If `standard_library_support` is unset for a target, then Cargo will not permit
+any standard library crates to be built for the target on a stable toolchain. It
+will be required to use a nightly toolchain to use build-std with that target.
 
 Cargo's `build-std-crates` field will default to the value of the
-`default_build_std_crate` field (`std` for "core, alloc and std", `alloc` for
-"core and alloc", and `core` for "core"). This does not prevent users from
-building more crates than the default, it is only intended to be a sensible
-default for the target that is probably what the user expects.
+`standard_library_support.default` field (`std` for "core, alloc and std",
+`alloc` for "core and alloc", and `core` for "core"). This does not prevent
+users from building more crates than the default, it is only intended to be a
+sensible default for the target that is probably what the user expects.
 
-The `target-default-build-std-crate` option will be supported by rustc's
+The `target-standard-library-support` option will be supported by rustc's
 `--print` flag and will be used by Cargo to query this value for a given target:
 
 ```shell-session
-$ rustc --print target-default-build-std-crate --target aarch64-unknown-linux-gnu
-std
-$ rustc --print target-default-build-std-crate --target aarch64-unknown-none
-core
+$ rustc --print target-standard-library-support --target armv7a-none-eabi
+default: core
+supported: core, alloc
+$ rustc --print target-standard-library-support --target aarch64-unknown-linux-gnu
+default: std
+supported: core, alloc, std
 ```
 
 *See the following sections for rationale/alternatives:*
 
+- [*Why introduce `standard_library_support`?*][rationale-why-standard-library-support]
 - [*Should target specifications own knowledge of which standard library crates are supported?*][rationale-target-spec-purpose]
 
 ## Interactions with `#![no_std]`
@@ -816,7 +835,7 @@ script, respectively.
 
 ↩ [*Proposal*][proposal]
 
-### Should target specifications own knowledge of which standard library crates are supported?
+## Should target specifications own knowledge of which standard library crates are supported?
 [rationale-target-spec-purpose]: #should-target-specifications-own-knowledge-of-which-standard-library-crates-are-supported
 
 It is much simpler to record this information in a target's specification than
@@ -832,7 +851,122 @@ there is no reason why the target specification could not be primarily
 maintained by the compiler team but in close coordination with library and other
 relevant teams.
 
-↩ [*Default standard library crate for targets*][default-std-crate-for-target]
+↩ [*Standard library crate stability*][standard-library-crate-stability]
+
+## Why introduce `standard_library_support`?
+[rationale-why-standard-library-support]: #why-introduce-standard_library_support
+
+Attempting to compile the standard library crates may fail for some targets
+depending on which standard library crates that target intends to support. When
+enabled, build-std should default to only building those crates that are
+expected to succeed, and should prevent the user from attempting to build those
+crates that are expected to fail. This will provide a much improved user
+experience than attempting to build standard library crates and encountering
+complex and unexpected compilation failures.
+
+For example, `no_std` targets often do not support `std` and so should inform
+the error with a helpful error message that `std` cannot be built for the target
+rather than attempt to build it and fail with confusing and unexpected errors.
+Similarly, many `no_std` targets do support `alloc` if a global allocator is
+provided, but if build-std built `alloc` by default for these targets then it
+would often be unnecessary and could often fail.
+
+It is not sufficient to determine which crates should be supported for a target
+based on its the tier. For example, targets like `aarch64-apple-tvos` are tier
+three while intending to fully support the standard library. It would be
+needlessly limiting to prevent build-std from building `std` for this target.
+However, build-std does provide a stable mechanism to build `std` for this
+target that did not previously exist, so there must be clarity about what
+guarantees and level of support is provided by the Rust project:
+
+1. Whether a standard library crate is part of the stable interface of
+   the standard library as a whole is determined by the library team and the set
+   of crates that comprise this interface is the same for all targets
+
+2. Whether any given standard library crate can be built with build-std is
+   determined on a per-target basis depending on whether it is intended that the
+   target be able to support that crate
+
+3. Whether the Rust project provide guarantees or support for the standard
+   library on a target is determined by the tier of the target
+
+4. Whether the pre-built standard library is distributed for a target is
+   determined by the tier of the target and which crates it intends to support
+
+5. Which crate is built by default by build-std is determined on a per-target
+   basis
+
+For example, consider the following targets:
+
+- `armv7a-none-eabihf`
+
+  1. As with any other target, the `std`, `alloc` and `core` crates are stable
+     interfaces to the standard library
+
+  2. It intends to support the `core` and `alloc` crates, which build-std will
+     permit to be built. `std` cannot be built by build-std for this target (on
+     stable)
+
+  3. It is a tier three target, so no support or guarantees are provided for the
+     standard library crates
+
+  4. It is a tier three target, so no standard library crates are distributed
+
+  5. `alloc` would not build without a global allocator crate being provided by
+     the user and may not be required by all users, so only `core` will be built
+     by default
+
+- `aarch64-apple-tvos`
+
+  1. As with any other target, the `std`, `alloc` and `core` crates are stable
+     interfaces to the standard library
+
+  2. It intends to support `core`, `alloc` and `std` crates, which build-std
+     will permit to be built
+
+  3. It is a tier three target, so no support or guarantees are provided for the
+     standard library crates
+
+  4. It is a tier three target, so no standard library crates are distributed
+
+  5. All of `core`, `alloc` and `std` will be built by default
+
+- `armv7a-none-eabi`
+
+  1. As with any other target, the `std`, `alloc` and `core` crates are stable
+     interfaces to the standard library
+
+  2. It intends to support the `core` and `alloc` crates, which build-std will
+     permit to be built. `std` cannot be built by build-std for this target (on
+     stable)
+
+  3. It is a tier two target, so the project guarantees that the `core` and
+     `alloc` crates will build
+
+  4. It is a tier two target, so there are distributed artefacts for the `core`
+     and `alloc` crates
+
+  5. `alloc` would not build without a global allocator crate being provided by
+     the user and may not be required by all users, so only `core` will be built
+     by default
+
+- `aarch64-unknown-linux-gnu`
+
+  1. As with any other target, the `std`, `alloc` and `core` crates are stable
+     interfaces to the standard library
+
+  2. It intends to support the `core`, `alloc` and `std` crates, which build-std
+     will permit to be built
+
+  3. It is a tier one target, so the project guarantees that the `core`, `alloc`
+     and `std` will build and that they have been tested
+
+  4. It is a tier one target, so there are distributed artefacts for the `core`,
+     `alloc` and `std` crates
+
+  5. All of `core`, `alloc` and `std` will be built by default
+
+↩ [*Standard library crate stability*][standard-library-crate-stability]
 
 ## Why remove `restricted_std`?
 [rationale-remove-restricted-std]: #why-remove-restricted_std
