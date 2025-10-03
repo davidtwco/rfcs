@@ -39,8 +39,8 @@ with new crates in future.
 
 Use with any other crate name is gated on a perma-unstable `cargo-feature`
 ([?][rationale-unstable-builtin-crates]). If a builtin dependency on a unstable
-crate name exists but is not used due to cfgs, then the crate could still be
-compiled with a stable toolchain.
+crate name exists but is not used due to cfgs, then Cargo will still require the
+Cargo feature.
 
 > [!NOTE]
 >
