@@ -102,6 +102,10 @@ section).
 >       used by the pre-built standard library as much as possible (e.g. using
 >       `-Cembed-bitcode=yes` to support LTO).
 >
+> - Standard library crates and their dependencies from `build-std-crates`
+>   cannot be patched/replaced by the user in the Cargo manifest or config
+>   (e.g. using source replacement, `[replace]` or `[patch]`)
+>
 > Cargo will resolves the dependencies of opaque dependencies, such as the
 > standard library, separately in their own workspaces. The root of such a
 > resolve will be the crates specified in `build-std-crates` or, if
