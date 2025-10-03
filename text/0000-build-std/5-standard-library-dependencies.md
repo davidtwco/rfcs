@@ -393,10 +393,9 @@ similarly be updated to support `builtin_deps`.
 ## Cargo subcommands
 [cargo-subcommands]: #cargo-subcommands
 
-As opaque dependencies, any Cargo command which accepts a package spec with `-p`
-will only additionally recognise `core`, `alloc` and `std` and none of their
-dependencies. Many of Cargo's subcommands will need modification to support
-build-std:
+Any Cargo command which accepts a package spec with `-p` will now additionally
+recognise `core`, `alloc` and `std` and none of their dependencies. Many of
+Cargo's subcommands will need modification to support build-std:
 
 [`cargo add`][cargo-add]'s heuristics will include adding `std`, `alloc` or
 `core` as builtin dependencies if these crate names are provided. `cargo add`

@@ -514,10 +514,10 @@ built standard libraries.
 ## Cargo subcommands
 [cargo-subcommands]: #cargo-subcommands
 
-As opaque dependencies, any Cargo command which accepts a package spec with `-p`
-will only additionally recognise `core`, `alloc` and `std` and none of their
-dependencies. Many of Cargo's subcommands will need modification to support
-build-std:
+Any Cargo command which accepts a package spec with `-p` will not recognise
+`core`, `alloc`, `std` or none of their dependencies (unless
+[*Standard library dependencies*][deps] is implemented). Many of Cargo's
+subcommands will need modification to support build-std:
 
 [`cargo clean`][cargo-clean] will additionally delete any builds of the standard
 library performed by build-std.
