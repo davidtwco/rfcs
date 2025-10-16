@@ -79,8 +79,7 @@ If [*Standard library dependencies*][deps] are implemented then `builtin`
 dependencies will be used if `build-std-crates` is not explicitly set.
 Otherwise, `build-std-crates` will default to the crate intended to be supported
 by the target (see later
-[*Default standard library crate for targets*][default-std-crate-for-target]
-section).
+[*Standard library crate stability*][standard-library-crate-stability] section).
 
 > [!NOTE]
 >
