@@ -946,7 +946,7 @@ For example, consider the following targets:
   3. It is a tier two target, so the project guarantees that the `core` and
      `alloc` crates will build
 
-  4. It is a tier two target, so there are distributed artefacts for the `core`
+  4. It is a tier two target, so there are distributed artifacts for the `core`
      and `alloc` crates
 
   5. `alloc` would not build without a global allocator crate being provided by
@@ -964,7 +964,7 @@ For example, consider the following targets:
   3. It is a tier one target, so the project guarantees that the `core`, `alloc`
      and `std` will build and that they have been tested
 
-  4. It is a tier one target, so there are distributed artefacts for the `core`,
+  4. It is a tier one target, so there are distributed artifacts for the `core`,
      `alloc` and `std` crates
 
   5. All of `core`, `alloc` and `std` will be built by default

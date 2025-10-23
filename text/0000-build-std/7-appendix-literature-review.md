@@ -615,7 +615,7 @@ dependencies of the standard library:
   - It was mentioned that almost all intrinsics now have a Rust implementation
     and that could be made the default for build-std eventually
     - Some concerns that this would result in divergence between locally-built
-      and distributed standard libraries
+      and pre-built standard libraries
 - **[wg-cargo-std-aware#16]: Deps: backtrace**, [ehuss], Jul 2019
   - `libbacktrace` previously required a C compiler but has since been replaced
     by `gimli` in the standard library and so this is no longer an issue
@@ -1041,7 +1041,7 @@ implementation.
 - **[cargo#7421]: Change build-std to use --sysroot**, [ehuss], Sep 2019
   - The initial implementation used `--extern` to provide rustc the newly-built
     standard library artifacts to later rustc invocations. This did not have
-    identical behaviour to the existing pre-built artefacts in the sysroot
+    identical behaviour to the existing pre-built artifacts in the sysroot
     ([wg-cargo-std-aware#40])
   - Negated the need to prevent rustc from using the sysroot
     ([wg-cargo-std-aware#31])

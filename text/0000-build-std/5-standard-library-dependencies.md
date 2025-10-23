@@ -50,7 +50,8 @@ Cargo feature.
 > or root-relative paths, like `::std`).
 
 Crates without an explicit dependency on the standard library now have a
-implicit dependency ([?][rationale-no-migration]) on `std`, `alloc` and `core`.
+implicit dependency ([?][rationale-no-migration]) on that target's default set
+of standard library crates (see [section 4][standard-library-crate-stability]).
 Any explicit `builtin` dependency present in any dependency table will disable
 the implicit dependencies.
 
@@ -320,7 +321,7 @@ implicit dependencies. It is possible for `dev-dependencies` to have additional
 `builtin` dependencies that the `dependencies` section does not have (e.g.
 requiring `std` when the regular dependencies only require `core`).
 
-Build scripts and proc macros continue to use the prebuilt standard library as
+Build scripts and proc macros continue to use the pre-built standard library as
 in [`build-std=always`][always], and so explicit dependencies on the standard
 library are not supported in `build-dependencies`.
 
@@ -1012,6 +1013,7 @@ user can enable `compiler-builtins/c`, they will need to manually configure
 [cargo-pkgid-spec]: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
+[standard-library-crate-stability]: ./4-build-std-always.md#standard-library-crate-stability
 
 [panic-strategies]: ./4-build-std-always.md#panic-strategies
 [compiler-builtins-mem]: ./4-build-std-always.md#compiler-builtinsmem
