@@ -14,9 +14,10 @@ automatically rebuild the standard library to match the user's current profile.
 # Motivation
 [motivation]: #motivation
 
-This RFC aimed at allowing users to rebuild the standard library with different
-codegen flags or profile as per the
-[motivations described in the build-std RFC](./0000-build-std/3-motivation.md).
+This RFC builds on a large collection of prior art collated in the
+[`build-std-context`][build-std-context] RFC, and is aimed at at allowing users
+to rebuild the standard library with different codegen flags or profile as
+identified in its [*Motivation*][motivations] section.
 
 # Explanation
 [explanation]: #explanation
@@ -185,7 +186,8 @@ gain additional optimisations.
 # Prior art
 [prior-art]: #prior-art
 
-See the [*Background*][background] and [*History*][history] of the build-std RFC.
+See the [*Background*][background] and [*History*][history] of the build-std
+context RFC.
 
 # Unresolved questions
 [unresolved-questions]: #unresolved-questions
@@ -208,7 +210,9 @@ This could be unintuitive for users.
 
 There are not currently any documented follow-ups to this RFC.
 
-[background]: ./0000-build-std/1-background.md
-[history]: ./0000-build-std/2-history.md
-[compatible]: ./0000a-build-std-compatible.md
-[deps]: ./0000-build-std/5-standard-library-dependencies.md
+[build-std-context]: ./0000-build-std-context.md
+[background]: ./0000-build-std-context/1-background.md
+[history]: ./0000-build-std-context/2-history.md
+[motivations]: ./0000-build-std-context/3-motivation.md
+[compatible]: ./0000c-build-std-compatible.md
+[deps]: ./0000b-standard-library-dependencies.md

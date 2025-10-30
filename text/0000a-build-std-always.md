@@ -1,12 +1,28 @@
-# `build-std=always`
+- Feature Name: `build-std-always`
+- Start Date: 2025-06-05
+- RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
+- Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
 
-This part of the RFC proposes adding a `build-std = "always|never"` option to
-the Cargo configuration which will unconditionally rebuild the standard library
-crates listed in a new `build-std-crates` option. It also describes how Cargo
-(or external tools) should build the standard library crates on stable (i.e.,
-which flags to pass and features to enable).
+# Summary
+[summary]: #summary
 
-This is aimed at supporting the following [motivations](./3-motivation.md):
+Add a new Cargo configuration option, `build-std = "always|never"`, which will
+unconditionally rebuild standard library dependencies. The set of standard
+library dependencies can optionally be customised with a new `build-std-crates`
+option. It also describes how Cargo (or external tools) should build the
+standard library crates on stable (i.e., which flags to pass and features to
+enable).
+
+This proposal limits the ways the built standard library can be customised (such
+as by settings in the profile) and intends that the build standard library
+matches the prebuilt one (if available) as closely as possible.
+
+# Motivation
+[motivation]: #motivation
+
+This RFC builds on a large collection of prior art collated in the
+[`build-std-context`][build-std-context] RFC, and is aimed at supporting the
+following [motivations][motivations] it identifies:
 
 - Building the standard library without relying on unstable escape hatches
 - Building standard library crates that are not shipped for a target
@@ -14,6 +30,10 @@ This is aimed at supporting the following [motivations](./3-motivation.md):
 
 # Proposal
 [proposal]: #proposal
+
+This proposal section is quite broad, and a 
+[summary of changes][summary-of-changes] is available for a very brief list of
+proposed changes.
 
 Cargo configuration will contain a new key `build-std` under the `[build]`
 section ([?][rationale-build-std-in-config]), permitting one of two values -
@@ -464,7 +484,7 @@ implementation of these symbols and will work by default when they do not depend
 on `std`.
 
 Those users providing their own mem symbols can override on weak linkage of the
-`compiler_builtins` symbols. or use a nightly toolchain to enable the
+`compiler_builtins` symbols, or use a nightly toolchain to enable the
 `external-mem` feature of an explicit dependency on the standard library (per
 [*Standard library dependencies*][deps]).
 
@@ -630,6 +650,15 @@ Building the standard library crates in the sysroot without requiring
 a stable toolchain and stable compiler flags, despite that the standard library
 uses unstable features in its source code, not as a general mechanism for
 bypassing Rust's stability mechanisms.
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+There are some drawbacks to build-std:
+
+- build-std overlaps with the initial designs and ideas for opaque dependencies
+  in Cargo, thereby introducing a risk of constraining or conflicting with the
+  eventual complete design for opaque dependencies
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -1256,6 +1285,12 @@ to once per toolchain as the component persists through updates.
 
 ↩ [*Vendored rust-src*][vendored-rust-src]
 
+# Prior art
+[prior-art]: #prior-art
+
+See the [*Background*][background] and [*History*][history] of the build-std
+context RFC.
+
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
@@ -1347,8 +1382,80 @@ build-std could build both the `dylib` and `rlib` of the standard library.
 
 ↩ [*Why not produce a `dylib` for the standard library?*][rationale-no-dylib]
 
-[deps]: ./5-standard-library-dependencies.md
-[future-compiler-builtins-c]: ./5-standard-library-dependencies.md#allow-local-builds-of-compiler-rt-intrinsics
+# Summary of proposed changes
+[summary-of-changes]: #summary-of-proposed-changes
+
+## New features
+[summary-features]: #new-features
+
+Summary of each of the changes which would need to be implemented in the Rust
+toolchain grouped by the project team whose purview the change would fall under.
+
+- Bootstrap/infra/release
+  - [Vendoring standard library sources into `rust-src`][vendored-rust-src]
+  - [`rust-src` is a default component][vendored-rust-src]
+  - [`rust-self-contained` components][self-contained-objects]
+  - [Testing build-std in rust-lang/rust CI][constraints-on-the-standard-library]
+- Cargo
+  - [`build-std = "always"`][proposal] 
+    - [Extending Cargo subcommmands][cargo-subcommands]
+  - [Prohibiting custom targets][custom-targets]
+- Compiler
+  - [Loading `panic_unwind` from `-L dependency=`][proposal]
+  - [`--no-implicit-sysroot-deps`][preventing-implicit-sysroot-dependencies]
+  - [Destabilise custom targets][custom-targets]
+  - [Assuming `RUSTC_BOOTSTRAP` for sysroot builds][building-the-standard-library-on-a-stable-toolchain]
+  - [Detect missing `rust-self-contained` components and provide diagnostics][self-contained-objects]
+  - [Forcing many codegen-units for `compiler-builtins`][compiler-builtins]
+- Project-wide
+  - [Documenting build-std stability guarantees][stability-guarantees]
+- Standard library
+  - [Removing `restricted_std`][restricted_std]
+  - [Moving configuration into the standard library's profile][proposal]
+
+## New constraints on the standard library, compiler and bootstrap
+[summary-constraints]: #new-constraints-on-the-standard-library-compiler-and-bootstrap
+
+A stable mechanism for building the standard library imposes some constraints on
+the rest of the toolchain that would need to be upheld:
+
+- No further required customisation of the pre-built standard library through
+  any means other than the profile in `Cargo.toml`
+- Avoid mandatory C dependencies on the standard library
+  - At the very least, new dependencies on the standard library will impact
+    whether the standard library can be successfully built by users with varying
+    environments and this impact will need to be considered going forward
+  - New C dependencies will need to be careful not to cause symbol conflicts
+    with user crates that pull in the same dependency (e.g. using
+    [`links =...`][links])
+    - If this did come up, it might be possible to work around it with
+      postprocessing that renames C symbols used by the standard library but
+      that would be better avoided
+- The standard library continues to exist in its own workspace, with its own
+  lockfile
+- The name of the `test` crate becomes stable (but not its interface)
+- The `panic-unwind` and `compiler-builtins-mem` `sysroot` features become
+  stable so Cargo can refer to them
+  - This should not necessitate a "stable/unstable features" mechanism, rather a
+    guarantee from the library team that they're happy for these to stay
+- Dependencies of the standard library cannot use build probes to detect whether
+  nightly features can be used
+  - With
+    [*Assuming `RUSTC_BOOTSTRAP` for sysroot builds*][building-the-standard-library-on-a-stable-toolchain],
+    these build probes would always assume the crate is being built on nightly
+
+> [!NOTE]
+>
+> Cargo will likely be made a [JOSH] subtree of the [rust-lang/rust] so that all
+> relevant parts of the toolchain can be updated in tandem when this is
+> necessary.
+
+[build-std-context]: ./0000-build-std-context.md
+[background]: ./0000-build-std-context/1-background.md
+[history]: ./0000-build-std-context/2-history.md
+[motivations]: ./0000-build-std-context/3-motivation.md
+[deps]: ./0000b-standard-library-dependencies.md
+[future-compiler-builtins-c]: ./0000b-standard-library-dependencies.md#allow-local-builds-of-compiler-rt-intrinsics
 
 [Opaque dependencies]: https://hackmd.io/@epage/ByGfPtRell
 
@@ -1359,6 +1466,9 @@ build-std could build both the `dylib` and `rlib` of the standard library.
 [rust#71009]: https://github.com/rust-lang/rust/pull/71009
 [rust#135395]: https://github.com/rust-lang/rust/pull/135395
 
+[links]: https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-links-field
+[JOSH]: https://josh-project.github.io/josh/intro.html
+[rust-lang/rust]: https://github.com/rust-lang/rust
 [std-build.rs]: https://github.com/rust-lang/rust/blob/f315e6145802e091ff9fceab6db627a4b4ec2b86/library/std/build.rs#L17
 
 [cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html

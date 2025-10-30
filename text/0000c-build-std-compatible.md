@@ -16,9 +16,10 @@ used by the rest of the crate graph.
 # Motivation
 [motivation]: #motivation
 
-This RFC aimed at unblocking the stabilisation of ABI-modifying compiler flags
-as per the
-[motivations described in the build-std RFC](./0000-build-std/3-motivation.md).
+This RFC builds on a large collection of prior art collated in the
+[`build-std-context`][build-std-context] RFC, and is aimed at supporting the
+the stabilisation of ABI-modifying compiler flags as identified in its
+[*Motivation*][motivations] section.
 
 # Explanation
 [explanation]: #explanation
@@ -174,15 +175,18 @@ Should it be an `--emit` flag? A `--print` flag?
 # Prior art
 [prior-art]: #prior-art
 
-See the [*Background*][background] and [*History*][history] of the build-std RFC.
+See the [*Background*][background] and [*History*][history] of the build-std
+context RFC.
 
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
 There are not currently any documented follow-ups to this RFC.
 
-[background]: ./0000-build-std/1-background.md
-[history]: ./0000-build-std/2-history.md
-[always]: ./0000-build-std/4-build-std-always.md#proposal
-[always-why-release]: ./0000-build-std/4-build-std-always.md#why-does-always-rebuild-in-release-profile
-[deps]: ./0000-build-std/5-standard-library-dependencies.md#proposal
+[build-std-context]: ./0000-build-std-context.md
+[background]: ./0000-build-std-context/1-background.md
+[history]: ./0000-build-std-context/2-history.md
+[motivations]: ./0000-build-std-context/3-motivation.md
+[always]: ./0000a-build-std-always.md#proposal
+[always-why-release]: ./0000a-build-std-always.md#why-does-always-rebuild-in-release-profile
+[deps]: ./0000b-standard-library-dependencies.md#proposal

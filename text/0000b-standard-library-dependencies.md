@@ -1,15 +1,29 @@
-# Explicit dependencies
+- Feature Name: `build-std-explicit-dependencies`
+- Start Date: 2025-06-05
+- RFC PR: [rust-lang/rfcs#0000](https://github.com/rust-lang/rfcs/pull/0000)
+- Rust Issue: [rust-lang/rust#0000](https://github.com/rust-lang/rust/issues/0000)
 
-This part of the RFC proposes supporting explicit dependencies on the standard
-library crates in `Cargo.toml`. This enables Cargo to determine which standard
-library crates are required by the crate graph without `build-std-crates` being
-set and for different crates to require different standard library crates.
+# Summary
+[summary]: #summary
 
-While not directly necessary for our core listed motivations, this allows future
-extensions which support public/private standard library dependencies or
-enabling features of the standard library. Allowing the standard library to
-behave similarly to other dependencies reduces user friction and can improve
-build times.
+Allow users to add explicit dependencies on standard library crates in the
+`Cargo.toml`. This enables Cargo to determine which standard library crates are
+required by the crate graph without `build-std-crates` being set and for
+different crates to require different standard library crates.
+
+# Motivation
+[motivation]: #motivation
+
+This RFC builds on a large collection of prior art collated in the
+[`build-std-context`][build-std-context] RFC. It does not directly address the
+main [motivations][build-std-context-motivations] it identifies but supports
+later proposals.
+
+The main motivation for this proposal is to support future extensions to
+build-std which allow public/private standard library dependencies or enabling
+features of the standard library. Allowing the standard library to behave
+similarly to other dependencies also reduces user friction and can improve build
+times.
 
 # Proposal
 [proposal]: #proposal
@@ -51,7 +65,7 @@ Cargo feature.
 
 Crates without an explicit dependency on the standard library now have a
 implicit dependency ([?][rationale-no-migration]) on that target's default set
-of standard library crates (see [section 4][standard-library-crate-stability]).
+of standard library crates (see [build-std-always][standard-library-crate-stability]).
 Any explicit `builtin` dependency present in any dependency table will disable
 the implicit dependencies.
 
@@ -928,6 +942,12 @@ would be desirable.
 
 ↩ [*`dev-dependencies` and `build-dependencies`*][dev-dependencies-and-build-dependencies]
 
+# Prior art
+[prior-art]: #prior-art
+
+See the [*Background*][background] and [*History*][history] of the build-std
+context RFC.
+
 # Future possibilities
 [future-possibilities]: #future-possibilities
 
@@ -1004,20 +1024,22 @@ enable this manually will be enabled through work on features (see
 user can enable `compiler-builtins/c`, they will need to manually configure
 `CFLAGS` to ensure that the C components will link with Rust code.
 
-[always]: ./4-build-std-always.md
+[background]: ./0000-build-std-context/1-background.md
+[history]: ./0000-build-std-context/2-history.md
+[motivations]: ./0000-build-std-context/3-motivation.md
+[background-dependencies]: ./0000-build-std-context/1-background.md#dependencies
+[always]: ./0000a-build-std-always.md
+[standard-library-crate-stability]: ./0000a-build-std-always.md#standard-library-crate-stability
+[panic-strategies]: ./0000a-build-std-always.md#panic-strategies
+[compiler-builtins-mem]: ./0000a-build-std-always.md#compiler-builtinsmem
+[always-noprelude]: ./0000a-build-std-always.md#why-use-noprelude-with---extern
 
-[background-dependencies]: ./1-background.md#dependencies
 [cargo-docs-renaming]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [cargo-json-schema]: https://doc.rust-lang.org/cargo/reference/registry-index.html#json-schema
 [cargo-registry-web-publish]: https://doc.rust-lang.org/cargo/reference/registry-web-api.html#publish
 [cargo-pkgid-spec]: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 [embed-rs-source]: https://github.com/embed-rs/stm32f7-discovery/blob/e2bf713263791c028c2a897f2eb1830d7f09eceb/core/src/lib.rs#L7
 [rust-extern-prelude]: https://doc.rust-lang.org/reference/names/preludes.html#extern-prelude
-[standard-library-crate-stability]: ./4-build-std-always.md#standard-library-crate-stability
-
-[panic-strategies]: ./4-build-std-always.md#panic-strategies
-[compiler-builtins-mem]: ./4-build-std-always.md#compiler-builtinsmem
-[always-noprelude]: ./4-build-std-always.md#why-use-noprelude-with---extern
 
 [cargo-add]: https://doc.rust-lang.org/cargo/commands/cargo-add.html
 [cargo-bench]: https://doc.rust-lang.org/cargo/commands/cargo-bench.html

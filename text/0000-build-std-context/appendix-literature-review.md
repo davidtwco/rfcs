@@ -1,5 +1,5 @@
-# Appendix II: Exhaustive literature review
-[appendix-ii]: #appendix-ii-exhaustive-literature-review
+# Appendix: Exhaustive literature review
+[appendix]: #appendix-exhaustive-literature-review
 
 This section will attempt to summarize every issue, pull request, RFC and
 discussion related to the design and implementation of build-std since its
