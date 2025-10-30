@@ -1176,10 +1176,10 @@ standard library.
 [wesleywiser]: https://github.com/wesleywiser
 [Ericson2314]: https://github.com/Ericson2314
 
-[appendix]: ./0000-build-std-context/appendix-literature-review.md
-[appendix-impl]: ./0000-build-std-context/appendix-literature-review.md#implementation
-[appendix-bugs]: ./0000-build-std-context/appendix-literature-review.md#bugs-in-the-compiler-or-standard-library
-[appendix-cargo-feats]: ./0000-build-std-context/appendix-literature-review.md#cargo-feature-requests-narrowly-applied-to-build-std
+[appendix]: https://hackmd.io/@davidtwco/BJG0jgZkbl
+[appendix-impl]: https://hackmd.io/@davidtwco/BJG0jgZkbl#implementation
+[appendix-bugs]: https://hackmd.io/@davidtwco/BJG0jgZkbl#bugs-in-the-compiler-or-standard-library
+[appendix-cargo-feats]: https://hackmd.io/@davidtwco/BJG0jgZkbl#cargo-feature-requests-narrowly-applied-to-build-std
 
 [why-not-rustup]: https://hackmd.io/@davidtwco/rkYRlKv_1x
 [Opaque dependencies]: https://hackmd.io/@epage/ByGfPtRell
