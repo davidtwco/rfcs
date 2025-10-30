@@ -91,15 +91,21 @@ supported:
 2. Rebuilding the standard library with ABI-modifying flags
 3. Building the standard library for tier three targets
 
-This RFC lays out the lengthy and broad context required to review future
-proposals to these problems.
+Proposals to solve these problems come broadly under the umbrella of "build-std"
+and date back over 10 years ago, though no complete solution has yet reached
+consensus. This RFC documents and summarises the lengthy and broad context
+around this feature, and identifies motivations and constraints that future
+proposals may take into account. It does not propose any changes directly but
+instead supports future proposals and their reviewers.
 
 This RFC is co-authored by [David Wood][davidtwco] and
 [Adam Gemmell][adamgemmell]. To improve the readability of this RFC, it does not
 follow the standard RFC template, while still aiming to capture all of the
-salient details that the template encourages. Due to the length of this RFC, it
-is split over multiple files to avoid rendering issues and slow loading on some
-platforms.
+salient details that the template encourages.
+
+This RFC also includes an [literature review appendix][appendix] in a separate
+file which contains a summary of all literature found during the process of
+writing this RFC.
 
 ## Scope
 [scope]: #scope
