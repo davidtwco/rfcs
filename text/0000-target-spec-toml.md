@@ -522,9 +522,6 @@ keys would be mapped to the proposed format:
   - Used in 46/306 built-in targets
 - **`archive-format` -> `unstable.target.archive_format`**
   - Format that archives should be emitted in
-    - This affects whether we use LLVM to assemble an archive or fall back to
-      the system linker, and currently only "gnu" is used to fall into LLVM
-    - Unknown strings cause the system linker to be used
   - Optional, defaults to unset, overrides
   - Used in 39/306 built-in targets
 - **`debuginfo-kind` -> `unstable.target.debuginfo_format`**
