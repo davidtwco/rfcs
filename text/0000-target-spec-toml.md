@@ -48,8 +48,8 @@ rustc will print the target-spec-json of a built-in target with the
 `--print target-spec-json` (this requires `-Zunstable-options`). Built-in
 targets in rustc are defined as Rust structs and can inherit from each other.
 
-Built-in targets are not subject to the same consistency checks as custom
-targets ([rust#133459]).
+Custom targets have previously not been subject to the same consistency checks
+as built-in targets ([rust#133459]).
 
 See also [`A-target-specs`] issues and [wg-cargo-std-aware#6] for more issues
 relating to the current target-spec-json format.
