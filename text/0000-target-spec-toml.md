@@ -517,7 +517,7 @@ keys would be mapped to the proposed format:
   - Variant of `lld` to use
   - Optional, defaults to unset, overrides
   - Used in 46/306 built-in targets
-- **`target-endian` -> `cfgs.endian`**
+- **`target-endian` -> `target.endianness`**
   - Values for `cfg(target_endian)`
   - Optional, defaults to little endian, overrides
   - Used in 46/306 built-in targets
