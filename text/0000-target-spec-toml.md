@@ -12,10 +12,21 @@ format.
 # Motivation
 [motivation]: #motivation
 
-rustc supports built-in targets and also custom user-defined targets. Custom
-targets are defined in a ad-hoc JSON format that has grown organically since it
-was introduced. If a target isn't built-in or its name ends in `.json` then
-rustc will attempt to load the target from a `$target.json` file from the
+rustc supports built-in targets and also custom user-defined targets. There are
+a handful of use-cases that custom targets address:
+
+- Making small tweaks to existing targets to change defaults without having to
+  fork the compiler
+- Experimenting with new targets, or targets that cannot be upstreamed, without
+  needing to fork the compiler
+
+By definition, custom targets have no official support from the project (unlike
+built-in targets, each of is supported according to their tier in the [target
+tier policy]).
+
+Custom targets are defined in a ad-hoc JSON format that has grown organically
+since it was introduced. If a target isn't built-in or its name ends in `.json`
+then rustc will attempt to load the target from a `$target.json` file from the
 current directory or the paths from the `RUST_TARGET_PATH` environment variable.
 
 The target-spec-json format was proposed in [rfcs#131] and was stabilised
@@ -63,6 +74,7 @@ relating to the current target-spec-json format.
 [rust#133459]: https://github.com/rust-lang/rust/issues/133459
 [rustc-targetspecjson]: https://github.com/rust-lang/rust/blob/d682af88a57b0045f8348507682c16c6160b522d/compiler/rustc_target/src/spec/json.rs#L480-L632
 [wg-cargo-std-aware#6]: https://github.com/rust-lang/wg-cargo-std-aware/issues/6
+[target tier policy]: https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
