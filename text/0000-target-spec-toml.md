@@ -368,7 +368,6 @@ keys would be mapped to the proposed format:
     - These features overwrite `-Ctarget-cpu` but can be overwritten with
       `-Ctarget-features`
     - Corresponds to `llc -mattr=$features`
-    - Accepts LLVM feature names, not Rust feature names
   - Optional, defaults to unset, merges
   - Used in 198/306 built-in targets
 - **`cpu` -> `backends.llvm.target_cpu`**
