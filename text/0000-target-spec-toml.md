@@ -110,6 +110,12 @@ Keys are either mandatory or optional. Mandatory keys must be set by a target
 specification. Optional keys do not need to be set. Optional keys can have a
 default value or be unset.
 
+The values accepted by keys are subject to their own stability policies defined
+on a per-key basis. For example, some keys may be passed directly to the codegen
+backend and its format may change (e.g. LLVM data layouts) and so no guarantees
+can be provided. Other keys, like the linker flavour, accept values entirely
+chosen by the compiler team and can have stronger stability guarantees.
+
 The target specification format has top-level keys and seven top-level tables:
 
 - Top-level
