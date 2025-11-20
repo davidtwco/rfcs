@@ -69,7 +69,7 @@ relating to the current target-spec-json format.
 
 The existing target specification format is replaced by a new TOML-based format
 with an per-key notion of stability and support for target specification
-inheritance. Users 8
+inheritance.
 
 Target specifications can be printed using the `--print target-spec` or
 `--print all-target-specs` flags:
@@ -102,9 +102,12 @@ TOML format proposed by this RFC.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-TODO: multiple backends (most fields are backend-specific, but the schema should be re-used - e.g. split debuginfo)
-TODO: mandatory fields (+ depending on the backend mandatory fields)
-TODO: current schema (+ this doesn't define the forever schema, just the initial one)
+This proposal does not aim to exhaustively define a `target-spec-toml` schema,
+only how the format should work and the initial keys that would be included. It
+is expected that the format will grow organically over time within the structure
+laid out by this RFC and that unstable options will be stabilised with
+appropriate consideration given to the appropriate naming and parent table when
+those keys are requested by users.
 
 Keys are either mandatory or optional. Mandatory keys must be set by a target
 specification. Optional keys do not need to be set. Optional keys can have a
@@ -126,6 +129,8 @@ The target specification format has top-level keys and seven top-level tables:
     features are supported by a given target
   - Each backend's table is optional and indicates whether a target supports
     that given backend
+  - It is expected that if a key is relevant to multiple codegen backends then
+    that the schema is shared between `backends` tables
   - For example, `backends.llvm`
 - `cfgs`
   - Keys that configure cfgs that are expected for targets
